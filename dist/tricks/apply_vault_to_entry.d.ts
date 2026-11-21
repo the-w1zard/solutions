@@ -1,0 +1,1 @@
+export declare function applyVaultToEntry(entryKey: string, entryConfig: IncantationsConfig<any, any, any, any, any, any, any, any, any, any>, vaultEntry: vault_entry): IncantationsConfig<any, any, any, any, any, any, any, any, any, any>;

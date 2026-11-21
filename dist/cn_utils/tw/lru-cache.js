@@ -1,0 +1,41 @@
+// LRU cache implementation using plain objects for simplicity
+export const createLruCache = (maxCacheSize) => {
+    if (maxCacheSize < 1) {
+        return {
+            get: () => undefined,
+            set: () => { },
+        };
+    }
+    let cacheSize = 0;
+    let cache = Object.create(null);
+    let previousCache = Object.create(null);
+    const update = (key, value) => {
+        cache[key] = value;
+        cacheSize++;
+        if (cacheSize > maxCacheSize) {
+            cacheSize = 0;
+            previousCache = cache;
+            cache = Object.create(null);
+        }
+    };
+    return {
+        get(key) {
+            let value = cache[key];
+            if (value !== undefined) {
+                return value;
+            }
+            if ((value = previousCache[key]) !== undefined) {
+                update(key, value);
+                return value;
+            }
+        },
+        set(key, value) {
+            if (key in cache) {
+                cache[key] = value;
+            }
+            else {
+                update(key, value);
+            }
+        },
+    };
+};

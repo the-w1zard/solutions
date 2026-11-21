@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>&ast;&ast;Class Utilities&ast;&ast;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-dark">
+            <span id="markdown-mermaid" aria-hidden="true" data-config="{&quot;darkModeTheme&quot;:&quot;vscode&quot;,&quot;lightModeTheme&quot;:&quot;vscode&quot;,&quot;maxTextSize&quot;:50000,&quot;clickDrag&quot;:&quot;alt&quot;,&quot;showControls&quot;:&quot;onHoverOrFocus&quot;,&quot;resizable&quot;:false,&quot;maxHeight&quot;:&quot;&quot;}"></span>
+				<h1 id="class-utilities"><strong>Class Utilities</strong></h1>
+<h2 id="functions"><strong>Functions</strong></h2>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Props</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>clsx</code></td>
+<td><code>...inputs: ClassValue[]</code></td>
+<td>Combines strings, numbers, arrays, and conditional object keys into a single space-separated class string.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="types"><strong>Types</strong></h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Definition</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ClassValue</code></td>
+<td><code>string \| number \| boolean \| null \| undefined \| ClassValue[] \| Record&lt;string, boolean \| null \| undefined&gt;</code></td>
+<td>Defines the accepted values that can be passed to <code>clsx</code>. Supports nested arrays and objects whose keys are included when their values are truthy.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage"><strong>Usage</strong></h2>
+<h3 id="clsx"><code>clsx</code></h3>
+<p>Accepts any number of <code>ClassValue</code> arguments and returns a string containing the resulting class names.</p>
+<p><strong>1. Strings</strong></p>
+<pre><code>clsx('container', 'active');
+// 'container active'
+</code></pre>
+<p><strong>2. Numbers</strong></p>
+<pre><code>clsx('width', 100);
+// 'width 100'
+</code></pre>
+<p><strong>3. Conditional values</strong></p>
+<pre><code>clsx('container', false, null, undefined, 0);
+// 'container'
+</code></pre>
+<p><strong>4. Object-based conditional classes</strong></p>
+<pre><code>clsx({
+  active: true,
+  disabled: false,
+  hidden: null,
+  visible: true,
+});
+// 'active visible'
+</code></pre>
+<p><strong>5. Arrays</strong></p>
+<pre><code>clsx([
+  'container',
+  'active',
+  ['nested', 'child'],
+]);
+// 'container active nested child'
+</code></pre>
+<p><strong>6. Mixed values</strong></p>
+<pre><code>clsx(
+  'container',
+  100,
+  { active: true, disabled: false },
+  ['nested', { visible: true }],
+);
+// 'container 100 active nested visible'
+</code></pre>
+<p><strong>7. Dynamic classes</strong></p>
+<pre><code>const isActive = true;
+const isDisabled = false;
+
+const classes = clsx(
+  'button',
+  {
+    active: isActive,
+    disabled: isDisabled,
+  },
+);
+</code></pre>
+<p><strong>Return value:</strong></p>
+<pre><code>'button active'
+</code></pre>
+<h1 id="class-name-utilities"><strong>Class Name Utilities</strong></h1>
+<h2 id="functions-1"><strong>Functions</strong></h2>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Props</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cn</code></td>
+<td><code>...inputs: ClassValue[]</code></td>
+<td>Combines class values using <code>clsx</code> and passes the resulting string to <code>twMerge</code> to merge Tailwind CSS classes.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage-1"><strong>Usage</strong></h2>
+<h3 id="cn"><code>cn</code></h3>
+<p>Accepts any number of <code>ClassValue</code> arguments, combines them using <code>clsx</code>, and merges conflicting Tailwind CSS classes using <code>twMerge</code>.</p>
+<p><strong>1. Basic usage</strong></p>
+<pre><code>cn('container', 'flex', 'items-center');
+// 'container flex items-center'
+</code></pre>
+<p><strong>2. Conditional classes</strong></p>
+<pre><code>cn('button', {
+  active: true,
+  disabled: false,
+});
+// 'button active'
+</code></pre>
+<p><strong>3. Tailwind class merging</strong></p>
+<pre><code>cn('px-2 py-1', 'px-4');
+// 'py-1 px-4'
+</code></pre>
+<p><strong>4. Conditional Tailwind classes</strong></p>
+<pre><code>const isActive = true;
+
+cn(
+  'button px-2',
+  isActive &amp;&amp; 'bg-blue-500',
+  'px-4',
+);
+</code></pre>
+<p><strong>5. Mixed values</strong></p>
+<pre><code>cn(
+  'container',
+  ['flex', 'items-center'],
+  { hidden: false, visible: true },
+  'gap-2',
+);
+</code></pre>
+<p><strong>Return value:</strong> A string containing the combined and merged class names.</p>
+<h1 id="class-variance-authority-cva"><strong>Class Variance Authority (CVA)</strong></h1>
+<h2 id="types-1"><strong>Types</strong></h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Definition</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ClassValue</code></td>
+<td><code>string \| undefined \| null \| false \| ClassValue[]</code></td>
+<td>Defines accepted class values, including strings, falsy values, and nested arrays.</td>
+</tr>
+<tr>
+<td><code>VariantRecord</code></td>
+<td><code>Record&lt;string, Record&lt;string, ClassValue&gt;&gt;</code></td>
+<td>Defines a collection of variants, each containing named options mapped to class values.</td>
+</tr>
+<tr>
+<td><code>VariantSelection&lt;V&gt;</code></td>
+<td><code>{ [K in keyof V]?: keyof V[K] }</code></td>
+<td>Defines the optional selection of a variant option for each variant key in <code>V</code>.</td>
+</tr>
+<tr>
+<td><code>CVAConfig&lt;V&gt;</code></td>
+<td>Interface</td>
+<td>Defines the configuration accepted by <code>cva</code>, including variants, default variants, and compound variants.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="functions-2"><strong>Functions</strong></h2>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Props</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cx</code></td>
+<td><code>...inputs: ClassValue[]</code></td>
+<td>Combines strings and nested arrays of class values into a single space-separated string.</td>
+</tr>
+<tr>
+<td><code>cva</code></td>
+<td><code>base: ClassValue</code>, <code>config?: CVAConfig&lt;V&gt;</code></td>
+<td>Creates a class-generation function that combines base classes, selected variants, default variants, compound variants, and an optional additional class.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage-2"><strong>Usage</strong></h2>
+<h3 id="cx"><code>cx</code></h3>
+<p>Accepts multiple class values and returns a space-separated string.</p>
+<p><strong>1. Strings</strong></p>
+<pre><code>cx('flex', 'items-center');
+// 'flex items-center'
+</code></pre>
+<p><strong>2. Nested arrays</strong></p>
+<pre><code>cx('flex', ['items-center', ['justify-between']]);
+// 'flex items-center justify-between'
+</code></pre>
+<p><strong>3. Falsy values</strong></p>
+<pre><code>cx('button', false, null, undefined);
+// 'button'
+</code></pre>
+<p><strong>4. Mixed values</strong></p>
+<pre><code>cx(
+  'button',
+  ['flex', 'items-center'],
+  false,
+  ['gap-2'],
+);
+// 'button flex items-center gap-2'
+</code></pre>
+<h3 id="cva"><code>cva</code></h3>
+<p>Accepts a base class value and an optional configuration. Returns a function that accepts variant selections and an optional additional class.</p>
+<p><strong>1. Base classes</strong></p>
+<pre><code>const button = cva('button');
+
+button();
+// 'button'
+</code></pre>
+<p><strong>2. Variants</strong></p>
+<pre><code>const button = cva('button', {
+  variants: {
+    size: {
+      small: 'text-sm',
+      large: 'text-lg',
+    },
+    intent: {
+      primary: 'bg-blue-500',
+      secondary: 'bg-gray-500',
+    },
+  },
+});
+
+button({ size: 'small', intent: 'primary' });
+// 'button text-sm bg-blue-500'
+</code></pre>
+<p><strong>3. Default variants</strong></p>
+<pre><code>const button = cva('button', {
+  variants: {
+    size: {
+      small: 'text-sm',
+      large: 'text-lg',
+    },
+  },
+  defaultVariants: {
+    size: 'small',
+  },
+});
+
+button();
+// 'button text-sm'
+</code></pre>
+<p><strong>4. Override default variants</strong></p>
+<pre><code>button({ size: 'large' });
+// 'button text-lg'
+</code></pre>
+<p><strong>5. Compound variants</strong></p>
+<pre><code>const button = cva('button', {
+  variants: {
+    intent: {
+      primary: 'bg-blue-500',
+      secondary: 'bg-gray-500',
+    },
+    size: {
+      small: 'text-sm',
+      large: 'text-lg',
+    },
+  },
+  compoundVariants: [
+    {
+      intent: 'primary',
+      size: 'large',
+      class: 'font-bold',
+    },
+  ],
+});
+
+button({ intent: 'primary', size: 'large' });
+// 'button bg-blue-500 text-lg font-bold'
+</code></pre>
+<p><strong>6. Additional classes</strong></p>
+<pre><code>const button = cva('button', {
+  variants: {
+    size: {
+      small: 'text-sm',
+      large: 'text-lg',
+    },
+  },
+});
+
+button({
+  size: 'large',
+  class: 'rounded-md',
+});
+// 'button text-lg rounded-md'
+</code></pre>
+<p><strong>7. Combining all features</strong></p>
+<pre><code>const button = cva('button', {
+  variants: {
+    intent: {
+      primary: 'bg-blue-500',
+      secondary: 'bg-gray-500',
+    },
+    size: {
+      small: 'text-sm',
+      large: 'text-lg',
+    },
+  },
+  defaultVariants: {
+    intent: 'primary',
+    size: 'small',
+  },
+  compoundVariants: [
+    {
+      intent: 'primary',
+      size: 'large',
+      class: 'font-bold',
+    },
+  ],
+});
+
+button({
+  size: 'large',
+  class: 'rounded-md',
+});
+// 'button bg-blue-500 text-lg font-bold rounded-md'
+</code></pre>
+<p><strong>Return value:</strong> <code>cva</code> returns a function that generates a class string based on the supplied variant selections and configuration.</p>
+<h1 id="class-name-utilities-1"><strong>Class Name Utilities</strong></h1>
+<h2 id="functions-3"><strong>Functions</strong></h2>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Props</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cx</code></td>
+<td><code>...inputs: ClassValue[]</code></td>
+<td>Combines class values using <code>clsx</code> and passes the resulting string to <code>twMerge</code> to merge conflicting Tailwind CSS classes.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage-3"><strong>Usage</strong></h2>
+<h3 id="cx-1"><code>cx</code></h3>
+<p>Accepts any number of <code>ClassValue</code> arguments, combines them using <code>clsx</code>, and merges conflicting Tailwind CSS classes using <code>twMerge</code>.</p>
+<p><strong>1. Basic usage</strong></p>
+<pre><code>cx('flex', 'items-center', 'gap-2');
+// 'flex items-center gap-2'
+</code></pre>
+<p><strong>2. Tailwind class merging</strong></p>
+<pre><code>cx('px-2 py-1', 'px-4');
+// 'py-1 px-4'
+</code></pre>
+<p><strong>3. Conditional classes</strong></p>
+<pre><code>cx('button', {
+  active: true,
+  disabled: false,
+});
+</code></pre>
+<p><strong>4. Nested arrays</strong></p>
+<pre><code>cx(
+  'container',
+  ['flex', ['items-center', 'gap-2']],
+);
+</code></pre>
+<p><strong>5. Mixed values</strong></p>
+<pre><code>const isActive = true;
+
+cx(
+  'button px-2',
+  isActive &amp;&amp; 'bg-blue-500',
+  ['rounded-md', 'px-4'],
+);
+</code></pre>
+<p><strong>Return value:</strong> A string containing the combined class names after Tailwind CSS conflict resolution.</p>
+<h1 id="tailwind-merge-utilities"><strong>Tailwind Merge Utilities</strong></h1>
+<h2 id="functions-4"><strong>Functions</strong></h2>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Props</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>createClassGroupUtils</code></td>
+<td><code>config: AnyConfig</code></td>
+<td>Creates class-group utilities for identifying class groups and retrieving conflicting class groups.</td>
+</tr>
+<tr>
+<td><code>createClassMap</code></td>
+<td><code>config: Config&lt;AnyClassGroupIds, AnyThemeGroupIds&gt;</code></td>
+<td>Creates a class map from the configured class groups and theme.</td>
+</tr>
+<tr>
+<td><code>createConfigUtils</code></td>
+<td><code>config: AnyConfig</code></td>
+<td>Creates configuration utilities, including caching, class parsing, modifier sorting, postfix lookup, and class-group utilities.</td>
+</tr>
+<tr>
+<td><code>createTailwindMerge</code></td>
+<td><code>createConfigFirst: () =&gt; AnyConfig</code>, <code>...createConfigRest: ((config: AnyConfig) =&gt; AnyConfig)[]</code></td>
+<td>Creates a Tailwind class-merging function using an initial configuration and optional subsequent configuration functions.</td>
+</tr>
+<tr>
+<td><code>extendTailwindMerge</code></td>
+<td><code>configExtension: ConfigExtension \| ((config: AnyConfig) =&gt; AnyConfig)</code>, <code>...createConfig: ((config: AnyConfig) =&gt; AnyConfig)[]</code></td>
+<td>Creates a Tailwind merge function using the default configuration extended with additional configuration.</td>
+</tr>
+<tr>
+<td><code>fromTheme</code></td>
+<td><code>key: DefaultThemeGroupIds \| AdditionalThemeGroupIds</code></td>
+<td>Creates a theme getter that retrieves values from a specified theme group.</td>
+</tr>
+<tr>
+<td><code>createLruCache</code></td>
+<td><code>maxCacheSize: number</code></td>
+<td>Creates a cache with <code>get</code> and <code>set</code> methods for storing string-keyed values.</td>
+</tr>
+<tr>
+<td><code>mergeClassList</code></td>
+<td><code>classList: string</code>, <code>configUtils: ConfigUtils</code></td>
+<td>Processes a class list and removes conflicting Tailwind classes.</td>
+</tr>
+<tr>
+<td><code>mergeConfigs</code></td>
+<td><code>baseConfig: AnyConfig</code>, <code>configExtension: ConfigExtension</code></td>
+<td>Overrides and extends configuration properties, returning the modified base configuration.</td>
+</tr>
+<tr>
+<td><code>createParseClassName</code></td>
+<td><code>config: AnyConfig</code></td>
+<td>Creates a class-name parser that identifies modifiers, important modifiers, base classes, postfix modifiers, and external classes.</td>
+</tr>
+<tr>
+<td><code>createSortModifiers</code></td>
+<td><code>config: AnyConfig</code></td>
+<td>Creates a modifier-sorting function that sorts regular modifiers while preserving order-sensitive modifiers.</td>
+</tr>
+<tr>
+<td><code>twJoin</code></td>
+<td><code>...classLists: ClassNameValue[]</code></td>
+<td>Combines strings and nested class arrays into a space-separated class string.</td>
+</tr>
+<tr>
+<td><code>twMerge</code></td>
+<td><code>...classLists: ClassNameValue[]</code></td>
+<td>Combines class values and removes conflicting Tailwind CSS classes.</td>
+</tr>
+<tr>
+<td><code>isFraction</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether a value matches a numeric fraction format.</td>
+</tr>
+<tr>
+<td><code>isNumber</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether a value represents a number.</td>
+</tr>
+<tr>
+<td><code>isInteger</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether a value represents an integer.</td>
+</tr>
+<tr>
+<td><code>isPercent</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether a value is a numeric percentage.</td>
+</tr>
+<tr>
+<td><code>isTshirtSize</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether a value matches a supported T-shirt size format.</td>
+</tr>
+<tr>
+<td><code>isAny</code></td>
+<td>None</td>
+<td>Always returns <code>true</code>.</td>
+</tr>
+<tr>
+<td><code>isAnyNonArbitrary</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether a value is neither an arbitrary value nor an arbitrary variable.</td>
+</tr>
+<tr>
+<td><code>isNamedContainerQuery</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether a value matches a named container query format.</td>
+</tr>
+<tr>
+<td><code>isArbitrarySize</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary value represents a size.</td>
+</tr>
+<tr>
+<td><code>isArbitraryValue</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether a value uses square-bracket arbitrary-value syntax.</td>
+</tr>
+<tr>
+<td><code>isArbitraryLength</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary value represents a length.</td>
+</tr>
+<tr>
+<td><code>isArbitraryNumber</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary value represents a number.</td>
+</tr>
+<tr>
+<td><code>isArbitraryWeight</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary value represents a weight.</td>
+</tr>
+<tr>
+<td><code>isArbitraryFamilyName</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary value represents a font family name.</td>
+</tr>
+<tr>
+<td><code>isArbitraryPosition</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary value represents a position.</td>
+</tr>
+<tr>
+<td><code>isArbitraryImage</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary value represents an image.</td>
+</tr>
+<tr>
+<td><code>isArbitraryShadow</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary value represents a shadow.</td>
+</tr>
+<tr>
+<td><code>isArbitraryVariable</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether a value uses parenthesized arbitrary-variable syntax.</td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableLength</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary variable has a length label.</td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableFamilyName</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary variable has a family-name label.</td>
+</tr>
+<tr>
+<td><code>isArbitraryVariablePosition</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary variable has a position label.</td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableSize</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary variable has a size label.</td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableImage</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary variable has an image label.</td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableShadow</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary variable has a shadow label or matches the supported unlabeled shadow format.</td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableWeight</code></td>
+<td><code>value: string</code></td>
+<td>Checks whether an arbitrary variable has a weight label or matches the supported unlabeled weight format.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="types-and-interfaces"><strong>Types and Interfaces</strong></h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Props</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ClassPartObject</code></td>
+<td><code>nextPart</code>, <code>validators</code>, <code>classGroupId</code></td>
+<td>Represents a node in the class-group map, containing child nodes, validators, and an optional class-group ID.</td>
+</tr>
+<tr>
+<td><code>ClassValidatorObject</code></td>
+<td><code>classGroupId</code>, <code>validator</code></td>
+<td>Associates a class-group ID with a class validator.</td>
+</tr>
+<tr>
+<td><code>ConfigUtils</code></td>
+<td>Derived from <code>createConfigUtils</code></td>
+<td>Represents the return type of <code>createConfigUtils</code>.</td>
+</tr>
+<tr>
+<td><code>LruCache&lt;Key, Value&gt;</code></td>
+<td><code>get(key)</code>, <code>set(key, value)</code></td>
+<td>Defines the interface for retrieving and storing cached values.</td>
+</tr>
+<tr>
+<td><code>ClassNameValue</code></td>
+<td>String, null, undefined, 0, 0n, false, or nested readonly arrays</td>
+<td>Defines the accepted values for <code>twJoin</code> and <code>twMerge</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage-4"><strong>Usage</strong></h2>
+<h3 id="createtailwindmerge"><code>createTailwindMerge</code></h3>
+<p>Creates a Tailwind merge function from an initial configuration factory and optional configuration extension functions.</p>
+<pre><code>const customMerge = createTailwindMerge(
+    getDefaultConfig,
+    (config) =&gt; config,
+);
+
+customMerge('px-2 px-4');
+// 'px-4'
+</code></pre>
+<h3 id="extendtailwindmerge"><code>extendTailwindMerge</code></h3>
+<p>Extends the default Tailwind configuration.</p>
+<pre><code>const customMerge = extendTailwindMerge({
+    extend: {
+        classGroups: {
+            'custom-spacing': ['custom-spacing'],
+        },
+    },
+});
+
+customMerge('custom-spacing px-4');
+</code></pre>
+<h3 id="fromtheme"><code>fromTheme</code></h3>
+<p>Creates a getter for a specified theme group.</p>
+<pre><code>const spacing = fromTheme('spacing');
+
+spacing({
+    spacing: ['4px', '8px'],
+});
+</code></pre>
+<h3 id="mergeconfigs"><code>mergeConfigs</code></h3>
+<p>Overrides and extends an existing configuration.</p>
+<pre><code>const config = getDefaultConfig();
+
+mergeConfigs(config, {
+    extend: {
+        classGroups: {
+            'custom-spacing': ['custom-spacing'],
+        },
+    },
+});
+</code></pre>
+<h3 id="twjoin"><code>twJoin</code></h3>
+<p>Combines class strings and nested arrays without resolving Tailwind conflicts.</p>
+<pre><code>twJoin(
+    'flex',
+    ['items-center', 'gap-2'],
+    'rounded-md',
+);
+</code></pre>
+<h3 id="twmerge"><code>twMerge</code></h3>
+<p>Combines class values and removes conflicting Tailwind classes.</p>
+<pre><code>twMerge(
+    'px-2 py-1',
+    'px-4',
+);
+// 'py-1 px-4'
+</code></pre>
+<h3 id="createlrucache"><code>createLruCache</code></h3>
+<p>Creates a cache with a maximum cache size.</p>
+<pre><code>const cache = createLruCache&lt;string, string&gt;(100);
+
+cache.set('key', 'value');
+
+cache.get('key');
+// 'value'
+</code></pre>
+<h3 id="mergeclasslist"><code>mergeClassList</code></h3>
+<p>Processes a class string using configuration utilities.</p>
+<pre><code>const config = getDefaultConfig();
+const utils = createConfigUtils(config);
+
+mergeClassList('px-2 px-4', utils);
+// 'px-4'
+</code></pre>
+<h3 id="createparseclassname"><code>createParseClassName</code></h3>
+<p>Creates a parser for Tailwind class names.</p>
+<pre><code>const config = getDefaultConfig();
+const parse = createParseClassName(config);
+
+parse('hover:focus:bg-red-500');
+</code></pre>
+<h3 id="createsortmodifiers"><code>createSortModifiers</code></h3>
+<p>Creates a function for sorting class modifiers.</p>
+<pre><code>const config = getDefaultConfig();
+const sortModifiers = createSortModifiers(config);
+
+sortModifiers(['focus', 'hover', 'active']);
+</code></pre>
+<h3 id="createconfigutils"><code>createConfigUtils</code></h3>
+<p>Creates the utilities used by the class-merging process.</p>
+<pre><code>const config = getDefaultConfig();
+const utils = createConfigUtils(config);
+
+utils.getClassGroupId('px-4');
+utils.getConflictingClassGroupIds('p', false);
+utils.parseClassName('hover:px-4');
+utils.sortModifiers(['focus', 'hover']);
+</code></pre>
+<h3 id="createclassgrouputils"><code>createClassGroupUtils</code></h3>
+<p>Creates class-group identification and conflict lookup functions.</p>
+<pre><code>const utils = createClassGroupUtils(getDefaultConfig());
+
+utils.getClassGroupId('px-4');
+utils.getConflictingClassGroupIds('p', false);
+</code></pre>
+<h3 id="createclassmap"><code>createClassMap</code></h3>
+<p>Creates a class map from class-group definitions.</p>
+<pre><code>const config = getDefaultConfig();
+
+const classMap = createClassMap(config);
+</code></pre>
+<h3 id="validators"><strong>Validators</strong></h3>
+<p>The <code>validators</code> namespace exposes the following functions.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>isFraction</code></td>
+<td><code>validators.isFraction('1/2')</code></td>
+</tr>
+<tr>
+<td><code>isNumber</code></td>
+<td><code>validators.isNumber('12')</code></td>
+</tr>
+<tr>
+<td><code>isInteger</code></td>
+<td><code>validators.isInteger('12')</code></td>
+</tr>
+<tr>
+<td><code>isPercent</code></td>
+<td><code>validators.isPercent('50%')</code></td>
+</tr>
+<tr>
+<td><code>isTshirtSize</code></td>
+<td><code>validators.isTshirtSize('xl')</code></td>
+</tr>
+<tr>
+<td><code>isAny</code></td>
+<td><code>validators.isAny()</code></td>
+</tr>
+<tr>
+<td><code>isAnyNonArbitrary</code></td>
+<td><code>validators.isAnyNonArbitrary('12px')</code></td>
+</tr>
+<tr>
+<td><code>isNamedContainerQuery</code></td>
+<td><code>validators.isNamedContainerQuery('@container/sidebar')</code></td>
+</tr>
+<tr>
+<td><code>isArbitrarySize</code></td>
+<td><code>validators.isArbitrarySize('[length:12px]')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryValue</code></td>
+<td><code>validators.isArbitraryValue('[12px]')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryLength</code></td>
+<td><code>validators.isArbitraryLength('[length:12px]')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryNumber</code></td>
+<td><code>validators.isArbitraryNumber('[number:12]')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryWeight</code></td>
+<td><code>validators.isArbitraryWeight('[weight:700]')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryFamilyName</code></td>
+<td><code>validators.isArbitraryFamilyName('[family-name:Arial]')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryPosition</code></td>
+<td><code>validators.isArbitraryPosition('[position:center]')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryImage</code></td>
+<td><code>validators.isArbitraryImage('[image:url(test.png)]')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryShadow</code></td>
+<td><code>validators.isArbitraryShadow('[shadow:0_0_4px_black]')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryVariable</code></td>
+<td><code>validators.isArbitraryVariable('(length:--spacing)')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableLength</code></td>
+<td><code>validators.isArbitraryVariableLength('(length:--spacing)')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableFamilyName</code></td>
+<td><code>validators.isArbitraryVariableFamilyName('(family-name:--font)')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryVariablePosition</code></td>
+<td><code>validators.isArbitraryVariablePosition('(position:--position)')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableSize</code></td>
+<td><code>validators.isArbitraryVariableSize('(size:--size)')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableImage</code></td>
+<td><code>validators.isArbitraryVariableImage('(image:--image)')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableShadow</code></td>
+<td><code>validators.isArbitraryVariableShadow('(shadow:--shadow)')</code></td>
+</tr>
+<tr>
+<td><code>isArbitraryVariableWeight</code></td>
+<td><code>validators.isArbitraryVariableWeight('(weight:--weight)')</code></td>
+</tr>
+</tbody>
+</table>
+<h1 id="ui-styling-utilities"><strong>UI Styling Utilities</strong></h1>
+<h2 id="constants"><strong>Constants</strong></h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Props</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>focusInput</code></td>
+<td>None</td>
+<td>Array of Tailwind CSS classes defining focus ring width, ring color, and border color for focused inputs, including dark-mode styles.</td>
+</tr>
+<tr>
+<td><code>focusRing</code></td>
+<td>None</td>
+<td>Array of Tailwind CSS classes defining an outline, outline offset, focus-visible outline width, and outline color, including dark-mode styles.</td>
+</tr>
+<tr>
+<td><code>hasErrorInput</code></td>
+<td>None</td>
+<td>Array of Tailwind CSS classes defining error-state ring width, border color, and ring color, including dark-mode styles.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="functions-5"><strong>Functions</strong></h2>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Props</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>formatDate</code></td>
+<td><code>date: Date</code></td>
+<td>Formats a JavaScript <code>Date</code> as a localized date string using the <code>en-US</code> locale, with a full month name, numeric day, and four-digit year.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage-5"><strong>Usage</strong></h2>
+<h3 id="focusinput"><code>focusInput</code></h3>
+<p>Provides the class names for focused input styling.</p>
+<pre><code>&lt;input
+  className={twMerge(clsx(focusInput))}
+/&gt;
+</code></pre>
+<h3 id="focusring"><code>focusRing</code></h3>
+<p>Provides the class names for focus-visible outline styling.</p>
+<pre><code>&lt;button
+  className={twMerge(clsx(focusRing))}
+&gt;
+  Button
+&lt;/button&gt;
+</code></pre>
+<h3 id="haserrorinput"><code>hasErrorInput</code></h3>
+<p>Provides the class names for input error styling.</p>
+<pre><code>&lt;input
+  className={twMerge(clsx(hasErrorInput))}
+/&gt;
+</code></pre>
+<h3 id="formatdate"><code>formatDate</code></h3>
+<p>Accepts a JavaScript <code>Date</code> object and returns a formatted date string.</p>
+<pre><code>const date = new Date(&quot;2026-11-21&quot;);
+
+formatDate(date);
+// 'November 21, 2026'
+</code></pre>
+<p><strong>Return value:</strong> <code>string</code> formatted as <code>Month Day, Year</code>.</p>
+
+            
+            
+        </body>
+        </html>

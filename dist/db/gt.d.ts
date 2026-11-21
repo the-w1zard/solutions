@@ -1,0 +1,35 @@
+export declare class GT {
+    ttl_minutes: number;
+    ttl_active: boolean;
+    _GT_SUBSCRIBERS: Map<string, any>;
+    _GT_MEMORY: Map<string, any>;
+    memoryTimer: ReturnType<typeof setTimeout> | undefined;
+    protected memory: Map<string, unknown>;
+    protected _waiters: Map<string, unknown>;
+    _channel?: BroadcastChannel;
+    _localChange: boolean;
+    private subscribers;
+    private _globalNotifyCache;
+    private _notifyCache;
+    private _withLock;
+    protected touchMemory(): void;
+    constructor();
+    ser(value: U): S;
+    deser<T = A, Z = A>(raw: S | O | M<T, Z> | SET<T> | AR<T>): A;
+    _broadcast(key: string, value: any, storageType: string, fn: string, path?: string, domain?: string, options?: any): void;
+    set(label: string, value: any): Promise<void>;
+    setMany(entries: Record<string, any>): Promise<void>;
+    get(label: string): any;
+    getMany(keys: string[]): Promise<Record<string, unknown>>;
+    update(label: string, value: any): Promise<void>;
+    delete(label: string): Promise<void>;
+    deleteMany(keys: string[]): Promise<void>;
+    has(label: string): boolean;
+    subscribe<T>(label: string, cb: (value: T) => void): () => void;
+    clear(): void;
+    _emit(label: string, value: any): void;
+    _peek(label: string): any;
+    getAsync(label: string): Promise<any>;
+    waitFor<T>(key: string): Promise<T>;
+}
+export declare const gt: GT;

@@ -1,0 +1,77 @@
+export declare class BYTE_ID {
+    MAX_PENDING: number;
+    sentTimestamps: Float64Array<ArrayBuffer>;
+    pendingResolvers: any[];
+    cursor: number;
+    private readonly counter;
+    private epoch;
+    _byteid(): string;
+    _sid(): string;
+    constructor();
+}
+export declare class Chain<T = any> {
+    initial_value: T;
+    id: string;
+    constructor(value?: T, id?: string);
+    private _use;
+    when(p: boolean | ((v: T) => boolean)): {
+        then: (fn: (v: T) => T | Promise<T>) => T | Promise<T> | undefined;
+        otherwise: (fn: (v: T) => T | Promise<T>) => any;
+    };
+    if(p: boolean | ((v: T) => boolean)): T;
+    switch(): T;
+    guard(p: (v: T) => boolean, e?: any): this;
+    set(v: T | ((c: T) => T)): this;
+    patch(p: Partial<T>): this;
+    merge(o: any): this;
+    tap(fn: (v: T) => void): this;
+    get<K extends keyof T>(k: K): Chain<T[K]>;
+    then(fn: (v: T) => T | Promise<T>): Promise<T>;
+    catch(fn: (e: any) => T): Promise<T>;
+    retry(fn: (v: T) => Promise<T>, opts?: {
+        attempts?: number;
+        baseDelayMs?: number;
+    }): Promise<T>;
+    delay(m: number): Promise<Chain<T>>;
+    throw(e: any): never;
+    done(): T;
+}
+export declare class ReChain<T = A> {
+    initial_value: A;
+    id: A;
+    constructor(value?: A, id?: A);
+    private _use;
+    private step;
+    private branch;
+    when(pred: (v: T) => boolean): {
+        then: (fn: A) => ReChain<any>;
+        otherwise: (fn: A) => ReChain<any>;
+        else: (fn: A) => ReChain<any>;
+        done: () => T;
+    };
+    if(pred: (v: T) => boolean): {
+        then: (fn: A) => ReChain<any>;
+        otherwise: (fn: A) => ReChain<any>;
+        else: (fn: A) => ReChain<any>;
+        done: () => T;
+    };
+    switch(): {
+        case(val: A, fn: (v: T) => A): ReChain<T>;
+        default(fn: (v: T) => A): ReChain<T>;
+        done(): T;
+    };
+    gate(pred: (v: T) => boolean): this;
+    guard(pred: (v: T) => boolean, onFail?: (v: T) => A): ReChain<any>;
+    tap(fn: (v: T) => A): this;
+    set(k: string, val: A): ReChain<any>;
+    patch(obj: object): ReChain<any>;
+    get(k: string): ReChain<any>;
+    merge(other: A): ReChain<any>;
+    delay(m: number): Promise<ReChain<T>>;
+    throw(err: A): never;
+    retry(attempts: number, delayMs?: number): Promise<T>;
+    catch<R = never>(onRejected: (e: A) => R | PromiseLike<R>): Promise<T | R>;
+    finally(fn: () => A): this;
+    then<R = T>(onFulfilled?: ((v: T) => R | PromiseLike<R>) | null, onRejected?: ((e: A) => R | PromiseLike<R>) | null): Promise<T | R>;
+    done(): T;
+}

@@ -1,0 +1,31 @@
+export declare class BINARY_CODEC {
+    private bytes;
+    private view;
+    private tail;
+    private strings;
+    private stringBytes;
+    private refs;
+    private nextRef;
+    constructor(initialCapacity?: number);
+    encode(value: unknown): Uint8Array;
+    decode(binary: Uint8Array): unknown;
+    private need;
+    private u8;
+    private i32;
+    private f64;
+    private writeValue;
+    private writeString;
+    private writeArray;
+    private writeBytes;
+    private writeObject;
+    private beginRef;
+    private endRef;
+    private readU8;
+    private readI32;
+    private readF64;
+    private readValue;
+    private readString;
+    private readArray;
+    private readObject;
+    private readBytes;
+}

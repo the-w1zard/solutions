@@ -1,0 +1,71 @@
+declare const EventEmitter: any;
+declare class ZeroStore extends EventEmitter {
+    #private;
+    r: string;
+    m: string;
+    s: string;
+    getMap<K, V>(slave?: A, master?: A, rk?: A): M2<K, V>;
+    getMetadata(s?: string, m?: string, r?: string): any;
+    _globalNotifyCache: WeakMap<any, Map<any, () => void>>;
+    _notifyCache: WeakMap<Map<any, Set<(value: A) => void>>, Map<any, () => void>>;
+    scheduleGlobalNotify(key: string | symbol, meta: A, opts: A): void;
+    scheduleNotify(key: A, _listeners: Map<A, Set<(value: A) => void>>, _state: Map<A, A>): void;
+    store: {
+        get: <T = any>(key: A, opts?: A) => T | undefined;
+        set: <T = any>(key: A, value: T | ((prev: T | undefined) => T), opts?: {
+            triggerRender?: boolean;
+            cap?: number;
+        } & A) => any;
+        subscribe: <T = any>(key: A, listener: (value: T) => void, opts?: A) => (() => void);
+        delete: (key: A, opts?: A) => boolean;
+        entries: <T = any>(opts?: A) => [A, T][];
+        persist: (key: A, opts?: A) => void;
+        unpersist: (key: A, opts?: A) => void;
+        has: (key: A, opts?: A) => boolean;
+        clear: (opts?: A) => void;
+        clearPersistent: (opts?: A) => void;
+        _emit: (key: string | symbol, sl_reg?: string, ms_reg?: string, globalKey?: string) => void;
+    };
+    set(key: A, value: A): this;
+    setLazy(key: A, make: () => A): this;
+    delete(key: A): boolean;
+    clear(): void;
+    subscribe(fn: (value: A, prev: A, key: S) => V): () => V;
+    subscribe(key: S, fn: (value: A, prev: A, key: S) => V, opts?: {
+        immediate?: B;
+    }): () => V;
+    subscribe(key: S, opts?: {
+        immediate?: B;
+    }): AsyncGenerator<A, V, U>;
+    unsubscribeAll(fns: Iterable<FN>): void;
+    subscribersOf(keys: S[]): SET2<FN>;
+    get<T = A>(key: S): T | UD;
+    get<T = A>(key: S, fallback: T): T;
+    getAll(): M2<A, A>;
+    has(key: A): any;
+    freeze(): void;
+    wait(key: A, { predicate, timeout, immediate, signal }?: A): Promise<any>;
+    waitChange(key: A, opts?: {}): Promise<any>;
+    waitFor(key: A, predicate: A, opts?: {}): Promise<any>;
+    setIfAbsent(key: A, value: U): boolean;
+    setIfPresent(key: A, value: U): boolean;
+    replace(key: A, value: U): boolean;
+    update(key: A, fn: (old: A, has: B) => A, initial: U): any;
+    inc(key: A, by?: number): any;
+    touch(key: A): boolean;
+    toJSON(): any;
+    entries(): any;
+    keys(): any;
+    values(): any;
+    find(pred: A): any;
+    findKey(pred: A): any;
+    group(fn: A): any;
+    pick(keys: A): any;
+    omit(keys: A): any;
+    snapshot(): M2<A, A>;
+    equals(other: A): any;
+    snapshotSubs(): any;
+}
+export { ZeroStore };
+declare const _default: ZeroStore;
+export default _default;
