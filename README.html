@@ -1080,6 +1080,410 @@ formatDate(date);
 </details>
 <h2 id="crdts">CRDT'S</h2>
 <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[AW_SET]</span> </strong></summary>
+<h1 id="awset"><code>AWSet</code></h1>
+<p>A production-grade Add-Wins Set CRDT implementing Observed-Remove Set (OR-Set) semantics. Each addition receives a unique replica-scoped tag, while removals tombstone the add tags observed locally. Replicas merge full states or deltas to synchronize their sets.</p>
+<h2 id="exported-types">Exported Types</h2>
+<h3 id="json"><code>Json</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">Json</span> =
+    | <span class="hljs-literal">null</span>
+    | <span class="hljs-built_in">boolean</span>
+    | <span class="hljs-built_in">number</span>
+    | <span class="hljs-built_in">string</span>
+    | <span class="hljs-title class_">Json</span>[]
+    | { [<span class="hljs-attr">key</span>: <span class="hljs-built_in">string</span>]: <span class="hljs-title class_">Json</span> };
+</code></pre>
+<p>JSON-compatible value type used by the default serializer.</p>
+<h3 id="elementkey"><code>ElementKey</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">ElementKey</span> = <span class="hljs-built_in">string</span>;
+</code></pre>
+<p>Stable serialized key identifying an element.</p>
+<h3 id="tag"><code>Tag</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">Tag</span> {
+    <span class="hljs-keyword">readonly</span> <span class="hljs-attr">replica</span>: <span class="hljs-built_in">string</span>;
+    <span class="hljs-keyword">readonly</span> <span class="hljs-attr">counter</span>: <span class="hljs-built_in">number</span>;
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>replica</code></td>
+<td>Stable replica identifier, unique across the deployment.</td>
+</tr>
+<tr>
+<td><code>counter</code></td>
+<td>Monotonic per-replica counter.</td>
+</tr>
+</tbody>
+</table>
+<p>Tags identify individual additions, allowing concurrent additions of the same element to remain distinguishable.</p>
+<h3 id="awsetstatet"><code>AWSetState&lt;T&gt;</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">AWSetState</span>&lt;T = <span class="hljs-built_in">any</span>&gt; {
+    <span class="hljs-attr">adds</span>: <span class="hljs-title class_">Record</span>&lt;<span class="hljs-title class_">ElementKey</span>, <span class="hljs-title class_">Tag</span>[]&gt;;
+    <span class="hljs-attr">removes</span>: <span class="hljs-title class_">Record</span>&lt;<span class="hljs-title class_">ElementKey</span>, <span class="hljs-title class_">Tag</span>[]&gt;;
+}
+</code></pre>
+<p>Complete serialized CRDT state.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>adds</code></td>
+<td>Stable serialized element keys mapped to add tags.</td>
+</tr>
+<tr>
+<td><code>removes</code></td>
+<td>Stable serialized element keys mapped to tombstoned tags.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="awsetdeltat"><code>AWSetDelta&lt;T&gt;</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">AWSetDelta</span>&lt;T&gt; {
+    <span class="hljs-attr">adds</span>: <span class="hljs-title class_">Record</span>&lt;<span class="hljs-title class_">ElementKey</span>, <span class="hljs-title class_">Tag</span>[]&gt;;
+    <span class="hljs-attr">removes</span>: <span class="hljs-title class_">Record</span>&lt;<span class="hljs-title class_">ElementKey</span>, <span class="hljs-title class_">Tag</span>[]&gt;;
+}
+</code></pre>
+<p>Incremental state containing add and removal tags absent from a supplied previous state.</p>
+<h3 id="awsetoptionst"><code>AWSetOptions&lt;T&gt;</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">AWSetOptions</span>&lt;T = <span class="hljs-built_in">any</span>&gt; {
+    <span class="hljs-attr">replicaId</span>: <span class="hljs-built_in">string</span>;
+    serialize?: <span class="hljs-function">(<span class="hljs-params">value: T</span>) =&gt;</span> <span class="hljs-title class_">Json</span>;
+    deserialize?: <span class="hljs-function">(<span class="hljs-params">key: ElementKey</span>) =&gt;</span> T;
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>replicaId</code></td>
+<td>Required stable replica identifier. Must not be reused after a reset.</td>
+</tr>
+<tr>
+<td><code>serialize</code></td>
+<td>Optional deterministic serializer. Required for non-JSON-safe elements.</td>
+</tr>
+<tr>
+<td><code>deserialize</code></td>
+<td>Optional deserializer used by <code>values()</code> and <code>entries()</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Custom serializers must produce identical keys for structurally equal elements.</p>
+<h2 id="class-awsett">Class: <code>AWSet&lt;T&gt;</code></h2>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">AWSet</span>&lt;T&gt;
+</code></pre>
+<h3 id="internal-state">Internal State</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>replicaId</code></td>
+<td>Stable identifier for this replica.</td>
+</tr>
+<tr>
+<td><code>serialize</code></td>
+<td>Element serialization function.</td>
+</tr>
+<tr>
+<td><code>deserialize</code></td>
+<td>Optional element deserialization function.</td>
+</tr>
+<tr>
+<td><code>counter</code></td>
+<td>Local monotonic add-tag counter, initialized to <code>0</code>.</td>
+</tr>
+<tr>
+<td><code>adds</code></td>
+<td>Element-to-add-tag record.</td>
+</tr>
+<tr>
+<td><code>removes</code></td>
+<td>Element-to-tombstone record.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>adds</code> and <code>removes</code> records use null-prototype objects.</p>
+<h2 id="constructor">Constructor</h2>
+<pre><code class="language-ts"><span class="hljs-title function_">constructor</span>(<span class="hljs-params">options: AWSetOptions</span>)
+</code></pre>
+<p>Creates a replica using the supplied options.</p>
+<p>Throws <code>TypeError</code> if <code>replicaId</code> is missing, empty, or not a string.</p>
+<p>When no custom serializer is provided, the default serializer accepts:</p>
+<ul>
+<li><code>null</code></li>
+<li>Strings</li>
+<li>Numbers</li>
+<li>Booleans</li>
+<li>Arrays</li>
+<li>Plain objects</li>
+</ul>
+<p>Object keys are sorted recursively to produce canonical serialization. Unsupported values require a custom <code>serialize</code> option.</p>
+<h2 id="core-operations">Core Operations</h2>
+<h3 id="addvalue"><code>add(value)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">add</span>(<span class="hljs-attr">value</span>: T): <span class="hljs-title class_">Tag</span>
+</code></pre>
+<p>Adds an element and returns its newly created tag.</p>
+<p>Each addition generates:</p>
+<pre><code class="language-ts">{
+    <span class="hljs-attr">replica</span>: <span class="hljs-variable language_">this</span>.<span class="hljs-property">replicaId</span>,
+    <span class="hljs-attr">counter</span>: ++<span class="hljs-variable language_">this</span>.<span class="hljs-property">counter</span>
+}
+</code></pre>
+<p>The tag is appended to the element's add-tag list.</p>
+<p>Adding an element that already exists creates another distinct tag.</p>
+<h3 id="removevalue"><code>remove(value)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">remove</span>(<span class="hljs-attr">value</span>: T): <span class="hljs-built_in">number</span>
+</code></pre>
+<p>Tombstones every locally observed add tag for the element.</p>
+<p>Returns the number of newly tombstoned tags.</p>
+<ul>
+<li>Returns <code>0</code> when no live add tags are observed.</li>
+<li>Existing tombstones are not duplicated.</li>
+<li>The element's add record is deleted after its observed tags are tombstoned.</li>
+</ul>
+<p>An addition made concurrently on another replica remains effective if its tag was not observed by this removal.</p>
+<h3 id="hasvalue"><code>has(value)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">has</span>(<span class="hljs-attr">value</span>: T): <span class="hljs-built_in">boolean</span>
+</code></pre>
+<p>Returns whether the element has at least one live add tag.</p>
+<h3 id="size"><code>size()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">size</span>(): <span class="hljs-built_in">number</span>
+</code></pre>
+<p>Returns the number of currently live serialized element keys.</p>
+<h3 id="values"><code>values()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">values</span>(): T[]
+</code></pre>
+<p>Returns the current effective elements.</p>
+<p>Uses the configured <code>deserialize</code> function when provided; otherwise parses each serialized key as JSON.</p>
+<h3 id="keys"><code>keys()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">keys</span>(): <span class="hljs-title class_">ElementKey</span>[]
+</code></pre>
+<p>Returns serialized keys with at least one live add tag.</p>
+<h3 id="entries"><code>entries()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">entries</span>(): [<span class="hljs-title class_">ElementKey</span>, T][]
+</code></pre>
+<p>Returns serialized element keys paired with their deserialized values.</p>
+<h2 id="state-synchronization">State Synchronization</h2>
+<h3 id="mergestate"><code>merge(state)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">merge</span>(<span class="hljs-attr">state</span>: <span class="hljs-title class_">AWSetState</span>&lt;T&gt;): <span class="hljs-built_in">void</span>
+</code></pre>
+<p>Merges another replica's complete state into the current replica.</p>
+<ul>
+<li>Unions add-tag lists.</li>
+<li>Unions tombstone lists.</li>
+<li>Deduplicates tags.</li>
+<li>Sorts tags deterministically.</li>
+<li>Calls <code>prune()</code> after merging.</li>
+</ul>
+<p>Throws <code>TypeError</code> if the supplied state is not an object.</p>
+<p>The merge operation is idempotent and commutative; the CRDT's set merge semantics are also associative.</p>
+<h3 id="mergedeltadelta"><code>mergeDelta(delta)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">mergeDelta</span>(<span class="hljs-attr">delta</span>: <span class="hljs-title class_">AWSetDelta</span>&lt;T&gt;): <span class="hljs-built_in">void</span>
+</code></pre>
+<p>Merges an incremental delta by delegating to <code>merge()</code>.</p>
+<p>Repeated application of the same delta is safe because tags are deduplicated.</p>
+<h3 id="getstate"><code>getState()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">getState</span>(): <span class="hljs-title class_">AWSetState</span>&lt;T&gt;
+</code></pre>
+<p>Returns a deep copy of the complete CRDT state.</p>
+<p>Both records and their tag objects are copied, so modifying the returned state does not directly modify the replica's internal records.</p>
+<h3 id="getdeltasince"><code>getDelta(since?)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">getDelta</span>(since?: <span class="hljs-title class_">AWSetState</span>&lt;T&gt;): <span class="hljs-title class_">AWSetDelta</span>&lt;T&gt;
+</code></pre>
+<p>Returns add and removal tags that are absent from the supplied previous state.</p>
+<p>When <code>since</code> is omitted, returns the current add and removal records as a delta.</p>
+<p>The returned delta contains only missing tags and can be applied repeatedly.</p>
+<h2 id="compaction">Compaction</h2>
+<h3 id="prune"><code>prune()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">prune</span>(): <span class="hljs-built_in">void</span>
+</code></pre>
+<p>Removes add tags that have matching tombstones.</p>
+<p>For each element:</p>
+<ol>
+<li>Reads its current add tags.</li>
+<li>Reads its tombstoned tags.</li>
+<li>Filters out matching add tags.</li>
+<li>Deletes the add record if no live tags remain.</li>
+<li>Retains any remaining live tags.</li>
+</ol>
+<p>Pruning does not remove tombstones. It reduces retained add-state while preserving the observable set.</p>
+<h2 id="internal-serialization-and-tag-helpers">Internal Serialization and Tag Helpers</h2>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>isPlainObject(value)</code></td>
+<td>Checks for non-null, non-array objects.</td>
+</tr>
+<tr>
+<td><code>canonicalize(value)</code></td>
+<td>Recursively sorts object keys while preserving array order.</td>
+</tr>
+<tr>
+<td><code>defaultSerialize(value)</code></td>
+<td>Serializes supported JSON-compatible values.</td>
+</tr>
+<tr>
+<td><code>stableStringify(value)</code></td>
+<td>Produces a canonical serialized element key.</td>
+</tr>
+<tr>
+<td><code>compareTags(a, b)</code></td>
+<td>Orders tags by replica identifier, then counter.</td>
+</tr>
+<tr>
+<td><code>dedupeTags(tags)</code></td>
+<td>Sorts and removes duplicate tags.</td>
+</tr>
+<tr>
+<td><code>mergeTagLists(a, b)</code></td>
+<td>Combines and deduplicates two tag lists.</td>
+</tr>
+<tr>
+<td><code>mergeRecordTags(target, source)</code></td>
+<td>Merges tag records and reports whether a record changed.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="crdt-semantics">CRDT Semantics</h2>
+<p>The implementation follows Add-Wins Set behavior:</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>An element is added</td>
+<td>A unique add tag is created.</td>
+</tr>
+<tr>
+<td>An element is removed</td>
+<td>All locally observed add tags are tombstoned.</td>
+</tr>
+<tr>
+<td>Add and remove happen concurrently</td>
+<td>The unseen concurrent add remains live.</td>
+</tr>
+<tr>
+<td>An observed add is subsequently removed</td>
+<td>Its matching tag remains tombstoned.</td>
+</tr>
+<tr>
+<td>Replicas merge the same state repeatedly</td>
+<td>Duplicate tags are eliminated.</td>
+</tr>
+<tr>
+<td>Replicas merge in different orders</td>
+<td>The merged tag sets converge.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-basic-usage">Example: Basic Usage</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> set = <span class="hljs-keyword">new</span> <span class="hljs-title class_">AWSet</span>&lt;<span class="hljs-built_in">string</span>&gt;({
+    <span class="hljs-attr">replicaId</span>: <span class="hljs-string">&quot;replica-a&quot;</span>
+});
+
+set.<span class="hljs-title function_">add</span>(<span class="hljs-string">&quot;Alice&quot;</span>);
+set.<span class="hljs-title function_">add</span>(<span class="hljs-string">&quot;Bob&quot;</span>);
+
+set.<span class="hljs-title function_">has</span>(<span class="hljs-string">&quot;Alice&quot;</span>); <span class="hljs-comment">// true</span>
+set.<span class="hljs-title function_">size</span>();       <span class="hljs-comment">// 2</span>
+
+set.<span class="hljs-title function_">remove</span>(<span class="hljs-string">&quot;Alice&quot;</span>);
+
+set.<span class="hljs-title function_">has</span>(<span class="hljs-string">&quot;Alice&quot;</span>); <span class="hljs-comment">// false</span>
+set.<span class="hljs-title function_">values</span>();     <span class="hljs-comment">// [&quot;Bob&quot;]</span>
+</code></pre>
+<h3 id="example-replica-synchronization">Example: Replica Synchronization</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> a = <span class="hljs-keyword">new</span> <span class="hljs-title class_">AWSet</span>&lt;<span class="hljs-built_in">string</span>&gt;({
+    <span class="hljs-attr">replicaId</span>: <span class="hljs-string">&quot;replica-a&quot;</span>
+});
+
+<span class="hljs-keyword">const</span> b = <span class="hljs-keyword">new</span> <span class="hljs-title class_">AWSet</span>&lt;<span class="hljs-built_in">string</span>&gt;({
+    <span class="hljs-attr">replicaId</span>: <span class="hljs-string">&quot;replica-b&quot;</span>
+});
+
+a.<span class="hljs-title function_">add</span>(<span class="hljs-string">&quot;Alice&quot;</span>);
+
+b.<span class="hljs-title function_">merge</span>(a.<span class="hljs-title function_">getState</span>());
+
+b.<span class="hljs-title function_">add</span>(<span class="hljs-string">&quot;Bob&quot;</span>);
+
+a.<span class="hljs-title function_">merge</span>(b.<span class="hljs-title function_">getState</span>());
+</code></pre>
+<p>Both replicas converge after exchanging their states.</p>
+<h3 id="example-delta-synchronization">Example: Delta Synchronization</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> previous = a.<span class="hljs-title function_">getState</span>();
+
+a.<span class="hljs-title function_">add</span>(<span class="hljs-string">&quot;Charlie&quot;</span>);
+
+<span class="hljs-keyword">const</span> delta = a.<span class="hljs-title function_">getDelta</span>(previous);
+
+b.<span class="hljs-title function_">mergeDelta</span>(delta);
+</code></pre>
+<p>Only tags absent from the supplied previous state are included in the delta.</p>
+<h3 id="example-structural-object-elements">Example: Structural Object Elements</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">interface</span> <span class="hljs-title class_">User</span> {
+    <span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span>;
+    <span class="hljs-attr">name</span>: <span class="hljs-built_in">string</span>;
+}
+
+<span class="hljs-keyword">const</span> users = <span class="hljs-keyword">new</span> <span class="hljs-title class_">AWSet</span>&lt;<span class="hljs-title class_">User</span>&gt;({
+    <span class="hljs-attr">replicaId</span>: <span class="hljs-string">&quot;replica-a&quot;</span>
+});
+
+users.<span class="hljs-title function_">add</span>({ <span class="hljs-attr">id</span>: <span class="hljs-number">1</span>, <span class="hljs-attr">name</span>: <span class="hljs-string">&quot;Alice&quot;</span> });
+
+users.<span class="hljs-title function_">has</span>({ <span class="hljs-attr">name</span>: <span class="hljs-string">&quot;Alice&quot;</span>, <span class="hljs-attr">id</span>: <span class="hljs-number">1</span> }); <span class="hljs-comment">// true</span>
+</code></pre>
+<p>The default canonical serializer sorts object keys, so structurally equivalent JSON objects produce the same element key.</p>
+<h3 id="example-custom-serialization">Example: Custom Serialization</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> dates = <span class="hljs-keyword">new</span> <span class="hljs-title class_">AWSet</span>&lt;<span class="hljs-title class_">Date</span>&gt;({
+    <span class="hljs-attr">replicaId</span>: <span class="hljs-string">&quot;replica-a&quot;</span>,
+    <span class="hljs-attr">serialize</span>: <span class="hljs-function"><span class="hljs-params">value</span> =&gt;</span> value.<span class="hljs-title function_">toISOString</span>(),
+    <span class="hljs-attr">deserialize</span>: <span class="hljs-function"><span class="hljs-params">key</span> =&gt;</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Date</span>(<span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">parse</span>(key))
+});
+</code></pre>
+<p>Custom serializers are used for values that are not supported by the default JSON serializer.</p>
+<h2 id="synchronization-notes">Synchronization Notes</h2>
+<ul>
+<li>Each replica must use a stable, unique <code>replicaId</code>.</li>
+<li>A replica identifier must not be reused after resetting its counter.</li>
+<li>Add tags are unique through the combination of replica ID and local counter.</li>
+<li>Tombstones preserve observed removals across state exchanges.</li>
+<li><code>getDelta()</code> supports incremental synchronization against a previously known state.</li>
+<li><code>prune()</code> removes matched add records but retains tombstones.</li>
+</ul>
+</details>
+<details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[AW_SET BINARY]</span> </strong></summary>
 <p>A binary-backed, add/remove set with delta synchronization, per-node sequence tracking, peer digests, and tombstone compaction.</p>
 <h2 id="api">API</h2>
 <table>
@@ -1139,7 +1543,7 @@ formatDate(date);
 </tbody>
 </table>
 <h2 id="usage-6">Usage</h2>
-<h3 id="constructor">Constructor</h3>
+<h3 id="constructor-1">Constructor</h3>
 <p>Creates a set for a node. The optional second argument specifies initial row capacity.</p>
 <pre><code>const set = new AW_SET(&quot;node-1&quot;);
 const setWithCapacity = new AW_SET(&quot;node-2&quot;, 2048);
@@ -1158,7 +1562,7 @@ set.add(&quot;banana&quot;);
 <pre><code>const exists = set.has(&quot;banana&quot;);
 // true
 </code></pre>
-<h3 id="values"><code>values</code></h3>
+<h3 id="values-1"><code>values</code></h3>
 <p>Returns all unique active elements.</p>
 <pre><code>const items = set.values();
 // [&quot;banana&quot;]
@@ -1266,6 +1670,501 @@ console.log(nodeB.values());
 <p>Element and node names are maintained in separate hash-to-name maps. Synchronization deltas include the required identity tables, node digest, and selected rows.</p>
 </details>
 <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[CASUAL_CURSOR]</span> </strong></summary>
+<h1 id="causalcursorcrdt"><code>CausalCursorCRDT</code></h1>
+<p>A state-based causal cursor CRDT for collaborative documents. Maintains one cursor per participant, using stable document anchors rather than integer offsets. Cursor updates carry Hybrid Logical Clock (HLC) timestamps, allowing replicas to resolve competing updates deterministically and synchronize cursor state through full-state or delta merges.</p>
+<h2 id="exported-types-1">Exported Types</h2>
+<h3 id="replicaid-participantid-anchorid"><code>ReplicaId</code>, <code>ParticipantId</code>, <code>AnchorId</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">ReplicaId</span> = <span class="hljs-built_in">string</span>;
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">ParticipantId</span> = <span class="hljs-built_in">string</span>;
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">AnchorId</span> = <span class="hljs-built_in">string</span>;
+</code></pre>
+<p>Identifiers for replicas, participants, and stable document positions.</p>
+<h3 id="anchorside"><code>AnchorSide</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">AnchorSide</span> = <span class="hljs-string">&#x27;before&#x27;</span> | <span class="hljs-string">&#x27;after&#x27;</span>;
+</code></pre>
+<p>Specifies which side of an anchored document item contains the cursor.</p>
+<h3 id="cursoranchor"><code>CursorAnchor</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">CursorAnchor</span> {
+    <span class="hljs-keyword">readonly</span> <span class="hljs-attr">id</span>: <span class="hljs-title class_">AnchorId</span>;
+    <span class="hljs-keyword">readonly</span> <span class="hljs-attr">side</span>: <span class="hljs-title class_">AnchorSide</span>;
+}
+</code></pre>
+<p>Represents a stable cursor position relative to an existing CRDT item, paragraph, block, or document boundary.</p>
+<h3 id="cursorstate"><code>CursorState</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">CursorState</span> {
+    <span class="hljs-keyword">readonly</span> <span class="hljs-attr">participantId</span>: <span class="hljs-title class_">ParticipantId</span>;
+    <span class="hljs-keyword">readonly</span> <span class="hljs-attr">anchor</span>: <span class="hljs-title class_">CursorAnchor</span>;
+    <span class="hljs-keyword">readonly</span> selectionAnchor?: <span class="hljs-title class_">CursorAnchor</span>;
+    <span class="hljs-keyword">readonly</span> color?: <span class="hljs-built_in">string</span>;
+    <span class="hljs-keyword">readonly</span> name?: <span class="hljs-built_in">string</span>;
+    <span class="hljs-keyword">readonly</span> <span class="hljs-attr">hlc</span>: <span class="hljs-built_in">string</span>;
+    <span class="hljs-keyword">readonly</span> <span class="hljs-attr">replicaId</span>: <span class="hljs-title class_">ReplicaId</span>;
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>participantId</code></td>
+<td>Participant owning the cursor.</td>
+</tr>
+<tr>
+<td><code>anchor</code></td>
+<td>Primary cursor position.</td>
+</tr>
+<tr>
+<td><code>selectionAnchor</code></td>
+<td>Optional selection endpoint; omitted for caret-only cursors.</td>
+</tr>
+<tr>
+<td><code>color</code></td>
+<td>Optional participant cursor color.</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>Optional participant display name.</td>
+</tr>
+<tr>
+<td><code>hlc</code></td>
+<td>Encoded Hybrid Logical Clock timestamp.</td>
+</tr>
+<tr>
+<td><code>replicaId</code></td>
+<td>Replica that generated the update.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="causalcontext"><code>CausalContext</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">CausalContext</span> = <span class="hljs-title class_">Record</span>&lt;<span class="hljs-title class_">ReplicaId</span>, <span class="hljs-built_in">string</span>&gt;;
+</code></pre>
+<p>Maps each observed replica to its latest known HLC timestamp.</p>
+<h3 id="cursorcrdtstate"><code>CursorCRDTState</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">CursorCRDTState</span> {
+    <span class="hljs-attr">cursors</span>: <span class="hljs-title class_">Record</span>&lt;<span class="hljs-title class_">ParticipantId</span>, <span class="hljs-title class_">CursorState</span>&gt;;
+    <span class="hljs-attr">context</span>: <span class="hljs-title class_">CausalContext</span>;
+}
+</code></pre>
+<p>Complete state containing participant cursors and causal context.</p>
+<h3 id="cursorcrdtdelta"><code>CursorCRDTDelta</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">CursorCRDTDelta</span> {
+    <span class="hljs-attr">cursors</span>: <span class="hljs-title class_">Record</span>&lt;<span class="hljs-title class_">ParticipantId</span>, <span class="hljs-title class_">CursorState</span>&gt;;
+    <span class="hljs-attr">context</span>: <span class="hljs-title class_">CausalContext</span>;
+}
+</code></pre>
+<p>Incremental synchronization representation containing changed cursors and causal context.</p>
+<h3 id="hlc"><code>HLC</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> HLC {
+    <span class="hljs-keyword">readonly</span> <span class="hljs-attr">physical</span>: <span class="hljs-built_in">number</span>;
+    <span class="hljs-keyword">readonly</span> <span class="hljs-attr">logical</span>: <span class="hljs-built_in">number</span>;
+    <span class="hljs-keyword">readonly</span> <span class="hljs-attr">replicaId</span>: <span class="hljs-title class_">ReplicaId</span>;
+}
+</code></pre>
+<p>Internal representation used when encoding and decoding timestamps.</p>
+<h3 id="causalcursoroptions"><code>CausalCursorOptions</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">CausalCursorOptions</span> {
+    <span class="hljs-attr">replicaId</span>: <span class="hljs-title class_">ReplicaId</span>;
+    presenceTtlMs?: <span class="hljs-built_in">number</span>;
+    now?: <span class="hljs-function">() =&gt;</span> <span class="hljs-built_in">number</span>;
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>replicaId</code></td>
+<td>Required stable, globally unique replica identifier.</td>
+</tr>
+<tr>
+<td><code>presenceTtlMs</code></td>
+<td>Maximum inactivity period before a cursor becomes eligible for garbage collection. Defaults to <code>120_000</code> milliseconds.</td>
+</tr>
+<tr>
+<td><code>now</code></td>
+<td>Optional clock source, useful for deterministic tests. Defaults to <code>Date.now</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="exported-hlc-and-causal-helpers">Exported HLC and Causal Helpers</h2>
+<h3 id="comparehlca-b"><code>compareHlc(a, b)</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">compareHlc</span>(<span class="hljs-params">a: <span class="hljs-built_in">string</span>, b: <span class="hljs-built_in">string</span></span>): <span class="hljs-built_in">number</span>
+</code></pre>
+<p>Compares two encoded HLC timestamps.</p>
+<ul>
+<li>Negative: <code>a</code> precedes <code>b</code>.</li>
+<li>Zero: timestamps are identical.</li>
+<li>Positive: <code>a</code> follows <code>b</code>.</li>
+</ul>
+<p>Comparison order:</p>
+<ol>
+<li>Physical timestamp.</li>
+<li>Logical counter.</li>
+<li>Replica identifier.</li>
+</ol>
+<h3 id="mergecontexta-b"><code>mergeContext(a, b)</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">mergeContext</span>(<span class="hljs-params">
+    a: CausalContext = {},
+    b: CausalContext = {}
+</span>): <span class="hljs-title class_">CausalContext</span>
+</code></pre>
+<p>Merges two causal contexts using the pointwise maximum HLC for each replica.</p>
+<p>Returns a new context without modifying the supplied records.</p>
+<h3 id="iscausallynewercandidate-context"><code>isCausallyNewer(candidate, context)</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">isCausallyNewer</span>(<span class="hljs-params">
+    candidate: <span class="hljs-built_in">string</span>,
+    context: CausalContext
+</span>): <span class="hljs-built_in">boolean</span>
+</code></pre>
+<p>Checks whether the candidate HLC is newer than the context entry associated with its encoded replica identifier.</p>
+<p>Returns <code>true</code> when no corresponding observation exists or when the candidate compares greater than the observed timestamp.</p>
+<h2 id="hlc-encoding">HLC Encoding</h2>
+<p>The internal HLC wire representation is:</p>
+<pre><code class="language-text">physical:logical:replicaId
+</code></pre>
+<p>Both numeric components use base-36 encoding with fixed-width padding:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th style="text-align:right">Encoding width</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Physical timestamp</td>
+<td style="text-align:right">11 characters</td>
+</tr>
+<tr>
+<td>Logical counter</td>
+<td style="text-align:right">6 characters</td>
+</tr>
+<tr>
+<td>Replica identifier</td>
+<td style="text-align:right">Variable</td>
+</tr>
+</tbody>
+</table>
+<p>The helper functions are:</p>
+<ul>
+<li><code>encodeHlc(hlc)</code> — encodes an HLC into a string.</li>
+<li><code>decodeHlc(encoded)</code> — parses the encoded timestamp into physical, logical, and replica components.</li>
+</ul>
+<h2 id="class-causalcursorcrdt">Class: <code>CausalCursorCRDT</code></h2>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">CausalCursorCRDT</span>
+</code></pre>
+<h3 id="internal-state-1">Internal State</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>replicaId</code></td>
+<td>Local replica identifier.</td>
+</tr>
+<tr>
+<td><code>presenceTtlMs</code></td>
+<td>Cursor inactivity threshold.</td>
+</tr>
+<tr>
+<td><code>now</code></td>
+<td>Configurable clock source.</td>
+</tr>
+<tr>
+<td><code>physical</code></td>
+<td>Local physical HLC component.</td>
+</tr>
+<tr>
+<td><code>logical</code></td>
+<td>Local logical HLC component.</td>
+</tr>
+<tr>
+<td><code>cursors</code></td>
+<td>Participant ID to current cursor state.</td>
+</tr>
+<tr>
+<td><code>context</code></td>
+<td>Latest observed HLC per replica.</td>
+</tr>
+</tbody>
+</table>
+<p>Cursor and context records use null-prototype objects.</p>
+<h2 id="constructor-2">Constructor</h2>
+<pre><code class="language-ts"><span class="hljs-title function_">constructor</span>(<span class="hljs-params">options: CausalCursorOptions</span>)
+</code></pre>
+<p>Initializes the replica, clock source, and presence TTL.</p>
+<p>Throws <code>TypeError</code> when <code>replicaId</code> is not a non-empty string.</p>
+<p>Defaults:</p>
+<pre><code class="language-ts">presenceTtlMs = <span class="hljs-number">120_000</span>;
+now = <span class="hljs-title class_">Date</span>.<span class="hljs-property">now</span>;
+physical = <span class="hljs-number">0</span>;
+logical = <span class="hljs-number">0</span>;
+</code></pre>
+<h2 id="cursor-operations">Cursor Operations</h2>
+<h3 id="setcursorinput"><code>setCursor(input)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">setCursor</span>(<span class="hljs-attr">input</span>: {
+    <span class="hljs-attr">participantId</span>: <span class="hljs-title class_">ParticipantId</span>;
+    <span class="hljs-attr">anchor</span>: <span class="hljs-title class_">CursorAnchor</span>;
+    selectionAnchor?: <span class="hljs-title class_">CursorAnchor</span>;
+    color?: <span class="hljs-built_in">string</span>;
+    name?: <span class="hljs-built_in">string</span>;
+}): <span class="hljs-title class_">CursorCRDTDelta</span>
+</code></pre>
+<p>Creates or updates a participant cursor and returns a delta suitable for immediate broadcasting.</p>
+<p>Processing:</p>
+<ol>
+<li>Validates the participant identifier.</li>
+<li>Validates the primary anchor identifier and side.</li>
+<li>Validates the optional selection anchor.</li>
+<li>Generates a new local HLC.</li>
+<li>Creates the cursor state.</li>
+<li>Stores the cursor under its participant ID.</li>
+<li>Updates the local causal context.</li>
+<li>Returns a delta containing the updated cursor and local HLC context.</li>
+</ol>
+<p>Valid anchor sides are <code>&quot;before&quot;</code> and <code>&quot;after&quot;</code>.</p>
+<h3 id="clearcursorparticipantid"><code>clearCursor(participantId)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">clearCursor</span>(<span class="hljs-attr">participantId</span>: <span class="hljs-title class_">ParticipantId</span>): <span class="hljs-title class_">CursorCRDTDelta</span>
+</code></pre>
+<p>Deletes the participant cursor from the local cursor record and returns a removal delta.</p>
+<p>Generates and observes a new HLC.</p>
+<p>The returned delta contains an empty cursor record and the updated local causal context.</p>
+<h3 id="hasparticipantid"><code>has(participantId)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">has</span>(<span class="hljs-attr">participantId</span>: <span class="hljs-title class_">ParticipantId</span>): <span class="hljs-built_in">boolean</span>
+</code></pre>
+<p>Checks whether a participant currently has a cursor entry.</p>
+<h3 id="getparticipantid"><code>get(participantId)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">get</span>(<span class="hljs-attr">participantId</span>: <span class="hljs-title class_">ParticipantId</span>): <span class="hljs-title class_">CursorState</span> | <span class="hljs-literal">undefined</span>
+</code></pre>
+<p>Returns a cloned cursor state or <code>undefined</code> when the participant is absent.</p>
+<h3 id="values-2"><code>values()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">values</span>(): <span class="hljs-title class_">CursorState</span>[]
+</code></pre>
+<p>Returns cloned cursor states for all currently stored participants.</p>
+<h3 id="getstate-1"><code>getState()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">getState</span>(): <span class="hljs-title class_">CursorCRDTState</span>
+</code></pre>
+<p>Returns a deep copy of the complete cursor and causal-context state.</p>
+<p>Cursor anchors and optional selection anchors are copied independently.</p>
+<h2 id="state-synchronization-1">State Synchronization</h2>
+<h3 id="mergestate-1"><code>merge(state)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">merge</span>(<span class="hljs-attr">state</span>: <span class="hljs-title class_">CursorCRDTState</span>): <span class="hljs-built_in">void</span>
+</code></pre>
+<p>Merges a remote full state into the local replica.</p>
+<p>Processing:</p>
+<ol>
+<li>Validates that the supplied state is an object.</li>
+<li>Merges causal contexts using <code>mergeContext</code>.</li>
+<li>Iterates over remote participant cursors.</li>
+<li>Replaces a local cursor when the remote cursor wins the comparison.</li>
+<li>Runs inactive cursor collection.</li>
+</ol>
+<p>Cursor replacement rules:</p>
+<ul>
+<li>A remote cursor with a greater HLC replaces the local cursor.</li>
+<li>A remote cursor with a lower HLC is ignored.</li>
+<li>When HLC timestamps tie, the lexicographically greater replica ID wins.</li>
+</ul>
+<h3 id="mergedeltadelta-1"><code>mergeDelta(delta)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">mergeDelta</span>(<span class="hljs-attr">delta</span>: <span class="hljs-title class_">CursorCRDTDelta</span>): <span class="hljs-built_in">void</span>
+</code></pre>
+<p>Merges an incremental update by delegating to <code>merge()</code>.</p>
+<p>Supports repeated and out-of-order delta application.</p>
+<h3 id="getdeltasince-1"><code>getDelta(since?)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">getDelta</span>(since?: <span class="hljs-title class_">CursorCRDTState</span>): <span class="hljs-title class_">CursorCRDTDelta</span>
+</code></pre>
+<p>Returns cursors whose HLC timestamps differ from the corresponding entries in the supplied previous state.</p>
+<p>When <code>since</code> is omitted, all currently stored cursors are included.</p>
+<p>The returned delta includes the current causal context.</p>
+<h2 id="presence-and-garbage-collection">Presence and Garbage Collection</h2>
+<h3 id="collectinactive"><code>collectInactive()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">collectInactive</span>(): <span class="hljs-built_in">number</span>
+</code></pre>
+<p>Removes cursors whose physical HLC timestamp is older than the configured presence TTL.</p>
+<p>The cutoff is calculated as:</p>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> cutoff = <span class="hljs-variable language_">this</span>.<span class="hljs-title function_">now</span>() - <span class="hljs-variable language_">this</span>.<span class="hljs-property">presenceTtlMs</span>;
+</code></pre>
+<p>Each cursor's physical timestamp is decoded from its HLC.</p>
+<p>Returns the number of removed participant cursors.</p>
+<p>Garbage collection is eventual rather than correctness-critical. A disconnected participant can be reintroduced by a later cursor update.</p>
+<h2 id="internal-hlc-operations">Internal HLC Operations</h2>
+<h3 id="nexthlc"><code>nextHlc()</code></h3>
+<p>Generates the next local HLC.</p>
+<ul>
+<li>If the current physical time exceeds the stored physical timestamp, updates the physical component and resets the logical counter.</li>
+<li>Otherwise, increments the logical counter.</li>
+<li>Encodes the result with the local replica ID.</li>
+</ul>
+<h3 id="observehlc"><code>observe(hlc)</code></h3>
+<p>Updates the causal context and local HLC clock after observing a timestamp.</p>
+<ul>
+<li>Updates the corresponding replica's context entry when the timestamp is newer.</li>
+<li>Advances the physical component when the observed physical timestamp is greater.</li>
+<li>Advances the logical component when physical timestamps match and the observed logical counter is greater.</li>
+</ul>
+<h3 id="shouldreplacelocal-remote"><code>shouldReplace(local, remote)</code></h3>
+<p>Determines whether a remote cursor should replace a local cursor.</p>
+<p>Uses <code>compareHlc()</code> first, then the replica ID as a deterministic tie-breaker.</p>
+<h3 id="createdeltapartial"><code>createDelta(partial)</code></h3>
+<p>Creates a <code>CursorCRDTDelta</code> from the supplied cursor and context records.</p>
+<h2 id="internal-copy-helpers">Internal Copy Helpers</h2>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>assertNonEmptyString(value, name)</code></td>
+<td>Validates non-empty string identifiers.</td>
+</tr>
+<tr>
+<td><code>encodeHlc(hlc)</code></td>
+<td>Encodes an HLC timestamp.</td>
+</tr>
+<tr>
+<td><code>decodeHlc(encoded)</code></td>
+<td>Decodes an HLC timestamp.</td>
+</tr>
+<tr>
+<td><code>cloneCursor(cursor)</code></td>
+<td>Copies cursor state and anchor objects.</td>
+</tr>
+<tr>
+<td><code>cloneState(state)</code></td>
+<td>Copies all cursors and causal context.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage-7">Usage</h2>
+<h3 id="creating-a-replica">Creating a Replica</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> cursors = <span class="hljs-keyword">new</span> <span class="hljs-title class_">CausalCursorCRDT</span>({
+    <span class="hljs-attr">replicaId</span>: <span class="hljs-string">&quot;replica-a&quot;</span>
+});
+</code></pre>
+<h3 id="publishing-a-cursor">Publishing a Cursor</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> delta = cursors.<span class="hljs-title function_">setCursor</span>({
+    <span class="hljs-attr">participantId</span>: <span class="hljs-string">&quot;user-1&quot;</span>,
+    <span class="hljs-attr">anchor</span>: {
+        <span class="hljs-attr">id</span>: <span class="hljs-string">&quot;paragraph-42&quot;</span>,
+        <span class="hljs-attr">side</span>: <span class="hljs-string">&quot;after&quot;</span>
+    },
+    <span class="hljs-attr">color</span>: <span class="hljs-string">&quot;#4488ff&quot;</span>,
+    <span class="hljs-attr">name</span>: <span class="hljs-string">&quot;Alice&quot;</span>
+});
+
+<span class="hljs-title function_">broadcast</span>(delta);
+</code></pre>
+<h3 id="publishing-a-selection">Publishing a Selection</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> delta = cursors.<span class="hljs-title function_">setCursor</span>({
+    <span class="hljs-attr">participantId</span>: <span class="hljs-string">&quot;user-1&quot;</span>,
+    <span class="hljs-attr">anchor</span>: {
+        <span class="hljs-attr">id</span>: <span class="hljs-string">&quot;paragraph-42&quot;</span>,
+        <span class="hljs-attr">side</span>: <span class="hljs-string">&quot;before&quot;</span>
+    },
+    <span class="hljs-attr">selectionAnchor</span>: {
+        <span class="hljs-attr">id</span>: <span class="hljs-string">&quot;paragraph-48&quot;</span>,
+        <span class="hljs-attr">side</span>: <span class="hljs-string">&quot;after&quot;</span>
+    }
+});
+
+<span class="hljs-title function_">broadcast</span>(delta);
+</code></pre>
+<h3 id="receiving-remote-updates">Receiving Remote Updates</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> <span class="hljs-attr">remoteDelta</span>: <span class="hljs-title class_">CursorCRDTDelta</span> = <span class="hljs-title function_">receiveUpdate</span>();
+
+cursors.<span class="hljs-title function_">mergeDelta</span>(remoteDelta);
+</code></pre>
+<h3 id="reading-participant-cursors">Reading Participant Cursors</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> cursor = cursors.<span class="hljs-title function_">get</span>(<span class="hljs-string">&quot;user-1&quot;</span>);
+
+<span class="hljs-keyword">const</span> allCursors = cursors.<span class="hljs-title function_">values</span>();
+</code></pre>
+<h3 id="full-state-synchronization">Full-State Synchronization</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> state = cursors.<span class="hljs-title function_">getState</span>();
+
+remoteReplica.<span class="hljs-title function_">merge</span>(state);
+</code></pre>
+<h3 id="incremental-synchronization">Incremental Synchronization</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> previous = cursors.<span class="hljs-title function_">getState</span>();
+
+<span class="hljs-comment">// Subsequent cursor updates...</span>
+
+<span class="hljs-keyword">const</span> delta = cursors.<span class="hljs-title function_">getDelta</span>(previous);
+
+remoteReplica.<span class="hljs-title function_">mergeDelta</span>(delta);
+</code></pre>
+<h3 id="removing-a-cursor">Removing a Cursor</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> delta = cursors.<span class="hljs-title function_">clearCursor</span>(<span class="hljs-string">&quot;user-1&quot;</span>);
+
+<span class="hljs-title function_">broadcast</span>(delta);
+</code></pre>
+<h3 id="inactive-cursor-collection">Inactive Cursor Collection</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> removed = cursors.<span class="hljs-title function_">collectInactive</span>();
+</code></pre>
+<h2 id="crdt-behavior">CRDT Behavior</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cursor identity</td>
+<td>One current cursor per participant.</td>
+</tr>
+<tr>
+<td>Position representation</td>
+<td>Stable document anchors rather than integer offsets.</td>
+</tr>
+<tr>
+<td>Update ordering</td>
+<td>Hybrid Logical Clock timestamps.</td>
+</tr>
+<tr>
+<td>Equal timestamp resolution</td>
+<td>Lexicographically greater replica ID wins.</td>
+</tr>
+<tr>
+<td>Context merging</td>
+<td>Pointwise maximum HLC per replica.</td>
+</tr>
+<tr>
+<td>Full synchronization</td>
+<td><code>getState()</code> and <code>merge()</code>.</td>
+</tr>
+<tr>
+<td>Incremental synchronization</td>
+<td><code>getDelta()</code> and <code>mergeDelta()</code>.</td>
+</tr>
+<tr>
+<td>Idempotency</td>
+<td>Repeated state or delta application does not change the result after convergence.</td>
+</tr>
+<tr>
+<td>Garbage collection</td>
+<td>Configurable inactivity TTL.</td>
+</tr>
+</tbody>
+</table>
+</details>
+<details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[CASUAL_CURSOR_BINARY]</span> </strong></summary>
 <p>A binary causal cursor that encapsulates an origin node hash, local log sequence, and causal version-vector frontier in a compact binary token.</p>
 <h2 id="api-1">API</h2>
 <table>
@@ -1309,8 +2208,8 @@ console.log(nodeB.values());
 </tr>
 </tbody>
 </table>
-<h2 id="usage-7">Usage</h2>
-<h3 id="constructor-1">Constructor</h3>
+<h2 id="usage-8">Usage</h2>
+<h3 id="constructor-3">Constructor</h3>
 <p>Creates a cursor associated with an origin node.</p>
 <pre><code>const cursor = new CASUAL_CURSOR(&quot;node-1&quot;);
 
@@ -1441,8 +2340,8 @@ const cursorWithCapacity = new CASUAL_CURSOR(&quot;node-2&quot;, 32);
 </tr>
 </tbody>
 </table>
-<h2 id="usage-8">Usage</h2>
-<h3 id="constructor-2">Constructor</h3>
+<h2 id="usage-9">Usage</h2>
+<h3 id="constructor-4">Constructor</h3>
 <p>Creates a store with the specified initial slot capacity.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> store = <span class="hljs-keyword">new</span> <span class="hljs-title function_">DELTA_STORE</span>();
 
@@ -1552,6 +2451,312 @@ nodeB.<span class="hljs-title function_">mergeDelta</span>(delta);
 </table>
 </details>
 <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[G_SET]</span> </strong></summary>
+<h1 id="gset"><code>GSet</code></h1>
+<p>A production-grade Grow-Only Set (G-Set) CRDT. Elements can be added but never removed. Element identity is determined by stable canonical serialization, allowing replicas to synchronize through complete states or incremental deltas.</p>
+<h2 id="exported-types-2">Exported Types</h2>
+<h3 id="json-1"><code>Json</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">Json</span> =
+    | <span class="hljs-literal">null</span>
+    | <span class="hljs-built_in">boolean</span>
+    | <span class="hljs-built_in">number</span>
+    | <span class="hljs-built_in">string</span>
+    | <span class="hljs-title class_">Json</span>[]
+    | { [<span class="hljs-attr">key</span>: <span class="hljs-built_in">string</span>]: <span class="hljs-title class_">Json</span> };
+</code></pre>
+<p>Recursive JSON-compatible value type.</p>
+<h3 id="elementkey-1"><code>ElementKey</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">ElementKey</span> = <span class="hljs-built_in">string</span>;
+</code></pre>
+<p>Canonical serialized identity of an element.</p>
+<h3 id="gsetstate"><code>GSetState</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">GSetState</span> {
+    <span class="hljs-attr">elements</span>: <span class="hljs-title class_">ElementKey</span>[];
+}
+</code></pre>
+<p>Complete set state containing the canonical keys of all elements.</p>
+<h3 id="gsetdelta"><code>GSetDelta</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">GSetDelta</span> {
+    <span class="hljs-attr">elements</span>: <span class="hljs-title class_">ElementKey</span>[];
+}
+</code></pre>
+<p>Incremental state containing canonical keys to union into another replica.</p>
+<h3 id="gsetoptions"><code>GSetOptions</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">GSetOptions</span> {
+    serialize?: <span class="hljs-function">(<span class="hljs-params">value: <span class="hljs-built_in">unknown</span></span>) =&gt;</span> <span class="hljs-title class_">Json</span>;
+    deserialize?: <span class="hljs-function">(<span class="hljs-params">key: ElementKey</span>) =&gt;</span> <span class="hljs-built_in">unknown</span>;
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>serialize</code></td>
+<td>Custom serializer for elements, particularly non-JSON-safe values.</td>
+</tr>
+<tr>
+<td><code>deserialize</code></td>
+<td>Optional inverse serializer used by <code>values()</code> and <code>entries()</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>For structurally equal objects to have identical membership, custom serializers must produce equivalent JSON representations.</p>
+<h2 id="class-gset">Class: <code>GSet</code></h2>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">GSet</span>&lt;T = <span class="hljs-built_in">unknown</span>&gt;
+</code></pre>
+<p>Maintains a local <code>Set&lt;ElementKey&gt;</code> containing canonical element identities.</p>
+<h3 id="constructor-5">Constructor</h3>
+<pre><code class="language-ts"><span class="hljs-title function_">constructor</span>(<span class="hljs-params">options: GSetOptions = {}</span>)
+</code></pre>
+<p>Initializes the element set and serialization functions.</p>
+<p>Defaults to <code>defaultSerialize</code>, which supports:</p>
+<ul>
+<li><code>null</code></li>
+<li>Strings</li>
+<li>Numbers</li>
+<li>Booleans</li>
+<li>Arrays</li>
+<li>Plain objects</li>
+</ul>
+<p>Non-JSON-safe values require a custom <code>serialize</code> function.</p>
+<h2 id="element-operations">Element Operations</h2>
+<h3 id="addvalue-1"><code>add(value)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">add</span>(<span class="hljs-attr">value</span>: T): <span class="hljs-built_in">boolean</span>
+</code></pre>
+<p>Adds an element using its canonical serialized identity.</p>
+<ul>
+<li>Returns <code>true</code> when newly added.</li>
+<li>Returns <code>false</code> when already present.</li>
+</ul>
+<p>Repeated additions are idempotent.</p>
+<h3 id="addallvalues"><code>addAll(values)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">addAll</span>(<span class="hljs-attr">values</span>: <span class="hljs-title class_">Iterable</span>&lt;T&gt;): <span class="hljs-built_in">number</span>
+</code></pre>
+<p>Adds every element in the iterable.</p>
+<p>Returns the number of elements newly added.</p>
+<h3 id="hasvalue-1"><code>has(value)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">has</span>(<span class="hljs-attr">value</span>: T): <span class="hljs-built_in">boolean</span>
+</code></pre>
+<p>Checks membership using the element's canonical serialized identity.</p>
+<h3 id="haskeykey"><code>hasKey(key)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">hasKey</span>(<span class="hljs-attr">key</span>: <span class="hljs-title class_">ElementKey</span>): <span class="hljs-built_in">boolean</span>
+</code></pre>
+<p>Checks membership directly using a canonical element key.</p>
+<h3 id="size-1"><code>size()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">size</span>(): <span class="hljs-built_in">number</span>
+</code></pre>
+<p>Returns the number of unique elements.</p>
+<h3 id="clear"><code>clear()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">clear</span>(): <span class="hljs-built_in">void</span>
+</code></pre>
+<p>Clears the local in-memory representation.</p>
+<h2 id="reading-elements">Reading Elements</h2>
+<h3 id="keys-1"><code>keys()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">keys</span>(): <span class="hljs-title class_">ElementKey</span>[]
+</code></pre>
+<p>Returns all canonical element keys.</p>
+<h3 id="values-3"><code>values()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">values</span>(): T[]
+</code></pre>
+<p>Returns deserialized elements.</p>
+<p>Uses the configured <code>deserialize</code> function when available; otherwise parses each canonical key with <code>JSON.parse</code>.</p>
+<h3 id="entries-1"><code>entries()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">entries</span>(): [<span class="hljs-title class_">ElementKey</span>, T][]
+</code></pre>
+<p>Returns canonical key/value pairs.</p>
+<h2 id="state-synchronization-2">State Synchronization</h2>
+<h3 id="mergestate-2"><code>merge(state)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">merge</span>(<span class="hljs-attr">state</span>: <span class="hljs-title class_">GSetState</span>): <span class="hljs-built_in">void</span>
+</code></pre>
+<p>Merges another complete G-Set state using set union.</p>
+<p>Validates that <code>state.elements</code> is an array and that every element is a string.</p>
+<p>Duplicate keys are ignored.</p>
+<h3 id="mergedeltadelta-2"><code>mergeDelta(delta)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">mergeDelta</span>(<span class="hljs-attr">delta</span>: <span class="hljs-title class_">GSetDelta</span> | <span class="hljs-title class_">Array</span>&lt;<span class="hljs-title class_">GSetDelta</span>&gt;): <span class="hljs-built_in">void</span>
+</code></pre>
+<p>Merges one or multiple deltas.</p>
+<p>Supports empty deltas, repeated delivery, and out-of-order delivery.</p>
+<h3 id="getstate-2"><code>getState()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">getState</span>(): <span class="hljs-title class_">GSetState</span>
+</code></pre>
+<p>Returns the complete state for persistence or initial replica synchronization.</p>
+<h3 id="getdeltasince-2"><code>getDelta(since?)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">getDelta</span>(since?: <span class="hljs-title class_">GSetState</span>): <span class="hljs-title class_">GSetDelta</span>
+</code></pre>
+<p>Returns canonical keys not present in the supplied previous state.</p>
+<p>When <code>since</code> is omitted, all current elements are included.</p>
+<h2 id="set-operations">Set Operations</h2>
+<h3 id="unionother"><code>union(other)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">union</span>(<span class="hljs-attr">other</span>: <span class="hljs-title class_">GSet</span>&lt;T&gt;): <span class="hljs-title class_">GSet</span>&lt;T&gt;
+</code></pre>
+<p>Creates a new G-Set containing the union of both sets.</p>
+<ul>
+<li>Neither input is modified.</li>
+<li>The resulting set reuses the current set's serializer and deserializer.</li>
+</ul>
+<h3 id="differenceother"><code>difference(other)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">difference</span>(<span class="hljs-attr">other</span>: <span class="hljs-title class_">GSet</span>&lt;T&gt;): <span class="hljs-title class_">ElementKey</span>[]
+</code></pre>
+<p>Returns canonical keys present in the current set but absent from <code>other</code>.</p>
+<p>Does not modify either set.</p>
+<h3 id="intersectionother"><code>intersection(other)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">intersection</span>(<span class="hljs-attr">other</span>: <span class="hljs-title class_">GSet</span>&lt;T&gt;): <span class="hljs-title class_">ElementKey</span>[]
+</code></pre>
+<p>Returns canonical keys present in both sets.</p>
+<p>Does not modify either set.</p>
+<h2 id="canonical-serialization">Canonical Serialization</h2>
+<p>Internal serialization helpers provide stable element identity.</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>isPlainObject(value)</code></td>
+<td>Checks whether a value is a non-null object that is not an array.</td>
+</tr>
+<tr>
+<td><code>canonicalize(value)</code></td>
+<td>Recursively canonicalizes arrays and sorts object keys.</td>
+</tr>
+<tr>
+<td><code>defaultSerialize(value)</code></td>
+<td>Handles JSON-compatible primitives, arrays, and plain objects.</td>
+</tr>
+<tr>
+<td><code>stableStringify(value)</code></td>
+<td>Produces the canonical JSON string used as the element key.</td>
+</tr>
+</tbody>
+</table>
+<p>Object keys are sorted recursively before stringification, so structurally equivalent JSON objects with different property insertion orders produce the same element identity.</p>
+<p>A custom serializer is required for values outside the supported JSON-compatible types.</p>
+<h2 id="usage-10">Usage</h2>
+<h3 id="basic-set">Basic Set</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> set = <span class="hljs-keyword">new</span> <span class="hljs-title class_">GSet</span>&lt;<span class="hljs-built_in">string</span>&gt;();
+
+set.<span class="hljs-title function_">add</span>(<span class="hljs-string">&#x27;alpha&#x27;</span>);
+set.<span class="hljs-title function_">add</span>(<span class="hljs-string">&#x27;beta&#x27;</span>);
+
+set.<span class="hljs-title function_">add</span>(<span class="hljs-string">&#x27;alpha&#x27;</span>); <span class="hljs-comment">// false</span>
+
+set.<span class="hljs-title function_">has</span>(<span class="hljs-string">&#x27;alpha&#x27;</span>); <span class="hljs-comment">// true</span>
+set.<span class="hljs-title function_">size</span>();       <span class="hljs-comment">// 2</span>
+</code></pre>
+<h3 id="adding-multiple-elements">Adding Multiple Elements</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> set = <span class="hljs-keyword">new</span> <span class="hljs-title class_">GSet</span>&lt;<span class="hljs-built_in">number</span>&gt;();
+
+<span class="hljs-keyword">const</span> added = set.<span class="hljs-title function_">addAll</span>([<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, <span class="hljs-number">2</span>]);
+
+<span class="hljs-comment">// added: 3</span>
+</code></pre>
+<h3 id="object-identity">Object Identity</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> set = <span class="hljs-keyword">new</span> <span class="hljs-title class_">GSet</span>&lt;{ <span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span>; <span class="hljs-attr">name</span>: <span class="hljs-built_in">string</span> }&gt;();
+
+set.<span class="hljs-title function_">add</span>({ <span class="hljs-attr">id</span>: <span class="hljs-number">1</span>, <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;Alice&#x27;</span> });
+
+set.<span class="hljs-title function_">has</span>({ <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;Alice&#x27;</span>, <span class="hljs-attr">id</span>: <span class="hljs-number">1</span> }); <span class="hljs-comment">// true</span>
+</code></pre>
+<p>Canonical serialization makes property insertion order irrelevant.</p>
+<h3 id="custom-serialization">Custom Serialization</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> set = <span class="hljs-keyword">new</span> <span class="hljs-title class_">GSet</span>&lt;<span class="hljs-title class_">Date</span>&gt;({
+    <span class="hljs-attr">serialize</span>: <span class="hljs-function"><span class="hljs-params">value</span> =&gt;</span> value.<span class="hljs-title function_">toISOString</span>(),
+    <span class="hljs-attr">deserialize</span>: <span class="hljs-function"><span class="hljs-params">key</span> =&gt;</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Date</span>(<span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">parse</span>(key)),
+});
+</code></pre>
+<h3 id="delta-synchronization">Delta Synchronization</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> alice = <span class="hljs-keyword">new</span> <span class="hljs-title class_">GSet</span>&lt;<span class="hljs-built_in">string</span>&gt;();
+<span class="hljs-keyword">const</span> bob = <span class="hljs-keyword">new</span> <span class="hljs-title class_">GSet</span>&lt;<span class="hljs-built_in">string</span>&gt;();
+
+<span class="hljs-keyword">const</span> delta = alice.<span class="hljs-title function_">addAll</span>([<span class="hljs-string">&#x27;alpha&#x27;</span>, <span class="hljs-string">&#x27;beta&#x27;</span>]);
+
+<span class="hljs-keyword">const</span> update = alice.<span class="hljs-title function_">getDelta</span>();
+
+bob.<span class="hljs-title function_">mergeDelta</span>(update);
+</code></pre>
+<h3 id="full-state-synchronization-1">Full-State Synchronization</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> state = alice.<span class="hljs-title function_">getState</span>();
+
+bob.<span class="hljs-title function_">merge</span>(state);
+</code></pre>
+<h3 id="incremental-synchronization-1">Incremental Synchronization</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> previous = alice.<span class="hljs-title function_">getState</span>();
+
+<span class="hljs-comment">// Subsequent additions...</span>
+
+<span class="hljs-keyword">const</span> delta = alice.<span class="hljs-title function_">getDelta</span>(previous);
+
+bob.<span class="hljs-title function_">mergeDelta</span>(delta);
+</code></pre>
+<h3 id="set-operations-1">Set Operations</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> first = <span class="hljs-keyword">new</span> <span class="hljs-title class_">GSet</span>&lt;<span class="hljs-built_in">number</span>&gt;();
+<span class="hljs-keyword">const</span> second = <span class="hljs-keyword">new</span> <span class="hljs-title class_">GSet</span>&lt;<span class="hljs-built_in">number</span>&gt;();
+
+first.<span class="hljs-title function_">addAll</span>([<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>]);
+second.<span class="hljs-title function_">addAll</span>([<span class="hljs-number">2</span>, <span class="hljs-number">3</span>, <span class="hljs-number">4</span>]);
+
+<span class="hljs-keyword">const</span> combined = first.<span class="hljs-title function_">union</span>(second);
+
+<span class="hljs-keyword">const</span> onlyFirst = first.<span class="hljs-title function_">difference</span>(second);
+<span class="hljs-keyword">const</span> shared = first.<span class="hljs-title function_">intersection</span>(second);
+</code></pre>
+<h2 id="crdt-invariants">CRDT Invariants</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Growth</td>
+<td>Elements can only be added.</td>
+</tr>
+<tr>
+<td>Removal</td>
+<td>Not supported.</td>
+</tr>
+<tr>
+<td>Element identity</td>
+<td>Stable canonical serialization.</td>
+</tr>
+<tr>
+<td>Addition</td>
+<td>Idempotent.</td>
+</tr>
+<tr>
+<td>Merge</td>
+<td>Set union.</td>
+</tr>
+<tr>
+<td>Commutativity</td>
+<td>Merge order does not affect the result.</td>
+</tr>
+<tr>
+<td>Associativity</td>
+<td>Grouping merges does not affect the result.</td>
+</tr>
+<tr>
+<td>Idempotency</td>
+<td>Repeated merges do not duplicate elements.</td>
+</tr>
+<tr>
+<td>Delta delivery</td>
+<td>Safe for duplicate and out-of-order delivery.</td>
+</tr>
+</tbody>
+</table>
+<p>The G-Set is monotonic: once an element is added to a replica, synchronization can propagate it to other replicas, and no merge operation removes it.</p>
+</details>
+<details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[G_SET_BINARY]</span> </strong></summary>
 <p>A high-performance binary Grow-Only Set (G-Set) CRDT backed by a contiguous <code>ArrayBuffer</code> slab. Maintains elements in ascending hash order, using binary search for lookups and sorted insertion for set operations.</p>
 <h2 id="api-3">API</h2>
 <table>
@@ -1595,8 +2800,8 @@ nodeB.<span class="hljs-title function_">mergeDelta</span>(delta);
 </tr>
 </tbody>
 </table>
-<h2 id="usage-9">Usage</h2>
-<h3 id="constructor-3">Constructor</h3>
+<h2 id="usage-11">Usage</h2>
+<h3 id="constructor-6">Constructor</h3>
 <p>Creates a G-Set with the specified initial record capacity.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> set = <span class="hljs-keyword">new</span> <span class="hljs-title function_">G_SET</span>();
 
@@ -1632,7 +2837,7 @@ nodeB.<span class="hljs-title function_">mergeDelta</span>(delta);
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(nodeB.<span class="hljs-title function_">has</span>(<span class="hljs-string">&quot;apple&quot;</span>));
 <span class="hljs-comment">// true</span>
 </code></pre>
-<h3 id="size"><code>size</code></h3>
+<h3 id="size-2"><code>size</code></h3>
 <p>Returns the number of records currently stored.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> count = set.<span class="hljs-property">size</span>;
 </code></pre>
@@ -1696,6 +2901,349 @@ nodeB.<span class="hljs-title function_">mergeDelta</span>(delta);
 </table>
 </details>
 <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[VERSION_VECTOR]</span> </strong></summary>
+<h1 id="versionvectorcrdt"><code>VersionVectorCRDT</code></h1>
+<p>A production-grade Version Vector CRDT for tracking causal histories across distributed replicas.</p>
+<p>Each replica maintains a monotonically increasing counter for its own events while retaining the highest observed counters from other replicas. Version vectors support causal ordering, concurrency detection, state merging, and incremental synchronization.</p>
+<h2 id="exported-types-3">Exported Types</h2>
+<h3 id="replicaid"><code>ReplicaId</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">ReplicaId</span> = <span class="hljs-built_in">string</span>;
+</code></pre>
+<p>Unique identifier for a replica.</p>
+<h3 id="versionvectorstate"><code>VersionVectorState</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">VersionVectorState</span> = <span class="hljs-title class_">Record</span>&lt;<span class="hljs-title class_">ReplicaId</span>, <span class="hljs-built_in">number</span>&gt;;
+</code></pre>
+<p>Maps each replica ID to its latest observed event counter.</p>
+<h3 id="versionvectordelta"><code>VersionVectorDelta</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">VersionVectorDelta</span> = <span class="hljs-title class_">Partial</span>&lt;<span class="hljs-title class_">VersionVectorState</span>&gt;;
+</code></pre>
+<p>Partial version vector containing only updated replica components.</p>
+<h3 id="causalrelation"><code>CausalRelation</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">CausalRelation</span> =
+    | <span class="hljs-string">&#x27;equal&#x27;</span>
+    | <span class="hljs-string">&#x27;before&#x27;</span>
+    | <span class="hljs-string">&#x27;after&#x27;</span>
+    | <span class="hljs-string">&#x27;concurrent&#x27;</span>;
+</code></pre>
+<p>Describes the causal relationship between two version vectors.</p>
+<table>
+<thead>
+<tr>
+<th>Relation</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>equal</code></td>
+<td>Both vectors represent identical causal histories.</td>
+</tr>
+<tr>
+<td><code>before</code></td>
+<td>The first vector is an ancestor of the second.</td>
+</tr>
+<tr>
+<td><code>after</code></td>
+<td>The first vector dominates the second.</td>
+</tr>
+<tr>
+<td><code>concurrent</code></td>
+<td>Neither vector dominates the other.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="versionvectoroptions"><code>VersionVectorOptions</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">VersionVectorOptions</span> {
+    <span class="hljs-attr">replicaId</span>: <span class="hljs-title class_">ReplicaId</span>;
+}
+</code></pre>
+<p>Requires a stable, globally unique replica ID. The identifier must never be reused after restoring from a backup.</p>
+<h2 id="exported-helper-functions">Exported Helper Functions</h2>
+<h3 id="cloneversionvectorstate"><code>cloneVersionVector(state)</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">cloneVersionVector</span>(<span class="hljs-params">
+    state: VersionVectorState = {}
+</span>): <span class="hljs-title class_">VersionVectorState</span>
+</code></pre>
+<p>Creates a defensive copy of a version vector.</p>
+<p>Validates every counter as a non-negative safe integer.</p>
+<p>Returns a null-prototype object.</p>
+<h3 id="mergeversionvectorsa-b"><code>mergeVersionVectors(a, b)</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">mergeVersionVectors</span>(<span class="hljs-params">
+    a: VersionVectorState = {},
+    b: VersionVectorState = {}
+</span>): <span class="hljs-title class_">VersionVectorState</span>
+</code></pre>
+<p>Merges two version vectors using component-wise maximum.</p>
+<p>For each replica:</p>
+<p>[
+V_{\text{result}}[r] = \max(V_a[r], V_b[r])
+]</p>
+<p>Missing components are treated as zero.</p>
+<p>Neither input is modified.</p>
+<h3 id="compareversionvectorsa-b"><code>compareVersionVectors(a, b)</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">compareVersionVectors</span>(<span class="hljs-params">
+    a: VersionVectorState = {},
+    b: VersionVectorState = {}
+</span>): <span class="hljs-title class_">CausalRelation</span>
+</code></pre>
+<p>Determines the causal relationship between two vectors.</p>
+<ul>
+<li><code>equal</code>: Neither vector contains a greater component.</li>
+<li><code>before</code>: The first vector has lower components and is dominated by the second.</li>
+<li><code>after</code>: The first vector dominates the second.</li>
+<li><code>concurrent</code>: Each vector contains at least one component greater than the corresponding component in the other.</li>
+</ul>
+<h3 id="dominatesa-b"><code>dominates(a, b)</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">dominates</span>(<span class="hljs-params">
+    a: VersionVectorState,
+    b: VersionVectorState
+</span>): <span class="hljs-built_in">boolean</span>
+</code></pre>
+<p>Returns <code>true</code> when <code>a</code> contains every update represented by <code>b</code>.</p>
+<p>Formally:</p>
+<p>[
+\forall r,\quad a[r] \geq b[r]
+]</p>
+<p>Missing components are treated as zero.</p>
+<h3 id="diffversionvectorscurrent-since"><code>diffVersionVectors(current, since)</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">diffVersionVectors</span>(<span class="hljs-params">
+    current: VersionVectorState = {},
+    since: VersionVectorState = {}
+</span>): <span class="hljs-title class_">VersionVectorDelta</span>
+</code></pre>
+<p>Returns only components in <code>current</code> that are newer than their corresponding components in <code>since</code>.</p>
+<p>The result is a compact version-vector delta.</p>
+<h2 id="class-versionvectorcrdt">Class: <code>VersionVectorCRDT</code></h2>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">VersionVectorCRDT</span>
+</code></pre>
+<p>Maintains a local replica's causal history.</p>
+<h3 id="internal-state-2">Internal State</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>replicaId</code></td>
+<td>Local replica identifier.</td>
+</tr>
+<tr>
+<td><code>counters</code></td>
+<td>Current version vector containing observed replica counters.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="constructor-7">Constructor</h3>
+<pre><code class="language-ts"><span class="hljs-title function_">constructor</span>(<span class="hljs-params">options: VersionVectorOptions</span>)
+</code></pre>
+<p>Validates the replica ID and initializes an empty version vector.</p>
+<p>Throws <code>TypeError</code> when the replica ID is not a non-empty string.</p>
+<h2 id="local-event-operations">Local Event Operations</h2>
+<h3 id="increment"><code>increment()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">increment</span>(): <span class="hljs-title class_">VersionVectorState</span>
+</code></pre>
+<p>Records a local event by incrementing only the local replica's counter.</p>
+<p>All other observed replica counters remain unchanged.</p>
+<p>Returns a defensive copy of the resulting complete version vector.</p>
+<h3 id="getreplicaid"><code>get(replicaId)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">get</span>(<span class="hljs-attr">replicaId</span>: <span class="hljs-title class_">ReplicaId</span>): <span class="hljs-built_in">number</span>
+</code></pre>
+<p>Returns the current counter for a replica.</p>
+<p>Returns <code>0</code> when the replica has no recorded events.</p>
+<h3 id="hasreplicaid"><code>has(replicaId)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">has</span>(<span class="hljs-attr">replicaId</span>: <span class="hljs-title class_">ReplicaId</span>): <span class="hljs-built_in">boolean</span>
+</code></pre>
+<p>Returns <code>true</code> when the version vector has observed at least one event from the specified replica.</p>
+<h3 id="replicas"><code>replicas()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">replicas</span>(): <span class="hljs-title class_">ReplicaId</span>[]
+</code></pre>
+<p>Returns all replica IDs currently represented in the vector.</p>
+<h3 id="size-3"><code>size()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">size</span>(): <span class="hljs-built_in">number</span>
+</code></pre>
+<p>Returns the number of replica components represented in the vector.</p>
+<h2 id="state-synchronization-3">State Synchronization</h2>
+<h3 id="mergestate-3"><code>merge(state)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">merge</span>(<span class="hljs-attr">state</span>: <span class="hljs-title class_">VersionVectorState</span>): <span class="hljs-built_in">void</span>
+</code></pre>
+<p>Merges a complete remote version vector using component-wise maximum.</p>
+<p>Validates that the supplied state is an object and is not an array.</p>
+<p>Repeated application of the same state has no additional effect.</p>
+<h3 id="mergedeltadelta-3"><code>mergeDelta(delta)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">mergeDelta</span>(
+    <span class="hljs-attr">delta</span>: <span class="hljs-title class_">VersionVectorDelta</span> | <span class="hljs-title class_">Array</span>&lt;<span class="hljs-title class_">VersionVectorDelta</span>&gt;
+): <span class="hljs-built_in">void</span>
+</code></pre>
+<p>Merges one or multiple compact deltas.</p>
+<p>Each delta is applied through <code>merge()</code>.</p>
+<p>Supports duplicate and out-of-order delivery.</p>
+<h3 id="getdeltasince-3"><code>getDelta(since?)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">getDelta</span>(since?: <span class="hljs-title class_">VersionVectorState</span>): <span class="hljs-title class_">VersionVectorDelta</span>
+</code></pre>
+<p>Returns only components newer than the supplied previous state.</p>
+<p>When <code>since</code> is omitted, all currently represented components are returned.</p>
+<h3 id="getstate-3"><code>getState()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">getState</span>(): <span class="hljs-title class_">VersionVectorState</span>
+</code></pre>
+<p>Returns a defensive copy of the complete version vector.</p>
+<h3 id="compareother"><code>compare(other)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">compare</span>(<span class="hljs-attr">other</span>: <span class="hljs-title class_">VersionVectorState</span>): <span class="hljs-title class_">CausalRelation</span>
+</code></pre>
+<p>Compares the local version vector against another vector without modifying either.</p>
+<h3 id="dominatesother"><code>dominates(other)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">dominates</span>(<span class="hljs-attr">other</span>: <span class="hljs-title class_">VersionVectorState</span>): <span class="hljs-built_in">boolean</span>
+</code></pre>
+<p>Checks whether the local vector contains every update represented by <code>other</code>.</p>
+<h3 id="observedreplicaid-counter"><code>observed(replicaId, counter)</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">observed</span>(<span class="hljs-attr">replicaId</span>: <span class="hljs-title class_">ReplicaId</span>, <span class="hljs-attr">counter</span>: <span class="hljs-built_in">number</span>): <span class="hljs-built_in">boolean</span>
+</code></pre>
+<p>Checks whether the local vector has observed the specified replica event.</p>
+<p>Returns <code>true</code> when:</p>
+<p>[
+V[\text{replicaId}] \geq \text{counter}
+]</p>
+<p>Validates the replica ID and counter.</p>
+<h3 id="compact-1"><code>compact()</code></h3>
+<pre><code class="language-ts"><span class="hljs-title function_">compact</span>(): <span class="hljs-built_in">number</span>
+</code></pre>
+<p>Removes replica entries whose counters are zero.</p>
+<p>Returns the number of removed entries.</p>
+<p>Nonzero causal-history entries are never removed.</p>
+<h2 id="usage-12">Usage</h2>
+<h3 id="creating-replicas">Creating Replicas</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> alice = <span class="hljs-keyword">new</span> <span class="hljs-title class_">VersionVectorCRDT</span>({
+    <span class="hljs-attr">replicaId</span>: <span class="hljs-string">&#x27;alice&#x27;</span>,
+});
+
+<span class="hljs-keyword">const</span> bob = <span class="hljs-keyword">new</span> <span class="hljs-title class_">VersionVectorCRDT</span>({
+    <span class="hljs-attr">replicaId</span>: <span class="hljs-string">&#x27;bob&#x27;</span>,
+});
+</code></pre>
+<h3 id="recording-local-events">Recording Local Events</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> aliceState = alice.<span class="hljs-title function_">increment</span>();
+
+<span class="hljs-comment">// {</span>
+<span class="hljs-comment">//     alice: 1</span>
+<span class="hljs-comment">// }</span>
+</code></pre>
+<h3 id="recording-events-after-synchronization">Recording Events After Synchronization</h3>
+<pre><code class="language-ts">bob.<span class="hljs-title function_">merge</span>(alice.<span class="hljs-title function_">getState</span>());
+
+<span class="hljs-keyword">const</span> bobState = bob.<span class="hljs-title function_">increment</span>();
+
+<span class="hljs-comment">// {</span>
+<span class="hljs-comment">//     alice: 1,</span>
+<span class="hljs-comment">//     bob: 1</span>
+<span class="hljs-comment">// }</span>
+</code></pre>
+<h3 id="full-state-synchronization-2">Full-State Synchronization</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> state = alice.<span class="hljs-title function_">getState</span>();
+
+bob.<span class="hljs-title function_">merge</span>(state);
+</code></pre>
+<h3 id="delta-synchronization-1">Delta Synchronization</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> previous = alice.<span class="hljs-title function_">getState</span>();
+
+<span class="hljs-comment">// Record subsequent events.</span>
+alice.<span class="hljs-title function_">increment</span>();
+alice.<span class="hljs-title function_">increment</span>();
+
+<span class="hljs-keyword">const</span> delta = alice.<span class="hljs-title function_">getDelta</span>(previous);
+
+bob.<span class="hljs-title function_">mergeDelta</span>(delta);
+</code></pre>
+<h3 id="multiple-delta-delivery">Multiple Delta Delivery</h3>
+<pre><code class="language-ts">bob.<span class="hljs-title function_">mergeDelta</span>([
+    delta1,
+    delta2,
+    delta3,
+]);
+</code></pre>
+<h3 id="causal-comparison">Causal Comparison</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> relation = alice.<span class="hljs-title function_">compare</span>(bob.<span class="hljs-title function_">getState</span>());
+
+<span class="hljs-keyword">switch</span> (relation) {
+    <span class="hljs-keyword">case</span> <span class="hljs-string">&#x27;equal&#x27;</span>:
+        <span class="hljs-comment">// Identical causal histories.</span>
+        <span class="hljs-keyword">break</span>;
+
+    <span class="hljs-keyword">case</span> <span class="hljs-string">&#x27;before&#x27;</span>:
+        <span class="hljs-comment">// Alice&#x27;s history precedes Bob&#x27;s.</span>
+        <span class="hljs-keyword">break</span>;
+
+    <span class="hljs-keyword">case</span> <span class="hljs-string">&#x27;after&#x27;</span>:
+        <span class="hljs-comment">// Alice&#x27;s history dominates Bob&#x27;s.</span>
+        <span class="hljs-keyword">break</span>;
+
+    <span class="hljs-keyword">case</span> <span class="hljs-string">&#x27;concurrent&#x27;</span>:
+        <span class="hljs-comment">// Neither history dominates the other.</span>
+        <span class="hljs-keyword">break</span>;
+}
+</code></pre>
+<h3 id="checking-observed-events">Checking Observed Events</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> observed = alice.<span class="hljs-title function_">observed</span>(<span class="hljs-string">&#x27;bob&#x27;</span>, <span class="hljs-number">3</span>);
+
+<span class="hljs-keyword">const</span> dominates = alice.<span class="hljs-title function_">dominates</span>(bob.<span class="hljs-title function_">getState</span>());
+</code></pre>
+<h3 id="compacting-zero-entries">Compacting Zero Entries</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> removed = alice.<span class="hljs-title function_">compact</span>();
+</code></pre>
+<h2 id="crdt-invariants-1">CRDT Invariants</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Local ownership</td>
+<td>Each replica increments only its own counter.</td>
+</tr>
+<tr>
+<td>Monotonicity</td>
+<td>Counters never decrease through normal operations.</td>
+</tr>
+<tr>
+<td>Merge</td>
+<td>Component-wise maximum.</td>
+</tr>
+<tr>
+<td>Commutativity</td>
+<td>Merge order does not affect the result.</td>
+</tr>
+<tr>
+<td>Associativity</td>
+<td>Grouping merges does not affect the result.</td>
+</tr>
+<tr>
+<td>Idempotency</td>
+<td>Repeated merges produce no additional changes.</td>
+</tr>
+<tr>
+<td>Causal ordering</td>
+<td>Detects before, after, equal, and concurrent histories.</td>
+</tr>
+<tr>
+<td>Delta synchronization</td>
+<td>Only newer components need to be transmitted.</td>
+</tr>
+<tr>
+<td>Defensive state</td>
+<td><code>getState()</code> returns a copy rather than exposing internal counters.</td>
+</tr>
+<tr>
+<td>Compaction</td>
+<td>Removes only zero-valued components.</td>
+</tr>
+</tbody>
+</table>
+<p>Version vectors provide the causal foundation for determining whether distributed events are ordered or concurrent, without relying on physical clocks.</p>
+</details>
+<details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[VERSION_VECTOR_BIANRY]</span> </strong></summary>
 <p>A high-performance binary Version Vector backed by a contiguous <code>ArrayBuffer</code> slab. Maintains node ID hashes in ascending order and stores each node's sequence counter as a <code>BigUint64</code>.</p>
 <h2 id="api-4">API</h2>
 <table>
@@ -1781,8 +3329,8 @@ nodeB.<span class="hljs-title function_">mergeDelta</span>(delta);
 </tr>
 </tbody>
 </table>
-<h2 id="usage-10">Usage</h2>
-<h3 id="constructor-4">Constructor</h3>
+<h2 id="usage-13">Usage</h2>
+<h3 id="constructor-8">Constructor</h3>
 <p>Creates a version vector for a local node.</p>
 <pre><code>const vector = new VERSION_VECTOR(&quot;node-1&quot;);
 
@@ -1794,7 +3342,7 @@ const largeVector = new VERSION_VECTOR(&quot;node-2&quot;, 32);
 <pre><code>const sequence = vector.incrementLocal();
 // 1n
 </code></pre>
-<h3 id="increment"><code>increment</code></h3>
+<h3 id="increment-1"><code>increment</code></h3>
 <p>Increments the sequence counter for a specified node hash.</p>
 <pre><code>const sequence = vector.increment(12345);
 // 1n
@@ -1997,8 +3545,8 @@ if (relation === CausalRelation.EQUAL) {
 </tr>
 </tbody>
 </table>
-<h2 id="usage-11">Usage</h2>
-<h3 id="constructor-5">Constructor</h3>
+<h2 id="usage-14">Usage</h2>
+<h3 id="constructor-9">Constructor</h3>
 <p>Creates a circuit breaker for a named resource. The name also identifies its distributed bus state channel.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> dbBreaker = <span class="hljs-keyword">new</span> <span class="hljs-title function_">CIRCUITBREAKER</span>(
   <span class="hljs-string">&quot;postgres-primary&quot;</span>,
@@ -2253,8 +3801,8 @@ if (relation === CausalRelation.EQUAL) {
 </tr>
 </tbody>
 </table>
-<h2 id="usage-12">Usage</h2>
-<h3 id="constructor-6">Constructor</h3>
+<h2 id="usage-15">Usage</h2>
+<h3 id="constructor-10">Constructor</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> bus = <span class="hljs-keyword">new</span> <span class="hljs-title function_">CQRS</span>({
   <span class="hljs-attr">channelName</span>: <span class="hljs-string">&quot;document-events&quot;</span>,
   <span class="hljs-attr">crossTabSync</span>: <span class="hljs-literal">true</span>,
@@ -2542,8 +4090,8 @@ if (relation === CausalRelation.EQUAL) {
 <span class="hljs-comment">// -1 = deleted text</span>
 </code></pre>
 <p>Whitespace is retained as independent tokens, allowing text reconstruction without losing spacing.</p>
-<h2 id="usage-13">Usage</h2>
-<h3 id="constructor-7">Constructor</h3>
+<h2 id="usage-16">Usage</h2>
+<h3 id="constructor-11">Constructor</h3>
 <p>Creates a diff/patch instance using default or custom configuration.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> dp = <span class="hljs-keyword">new</span> <span class="hljs-title function_">DIFFPATCH</span>();
 
@@ -2730,8 +4278,8 @@ after.<span class="hljs-property">settings</span> === before.<span class="hljs-p
 </tbody>
 </table>
 <p>When no node ID is available, the timestamp contains only the wall time and logical counter.</p>
-<h2 id="usage-14">Usage</h2>
-<h3 id="constructor-8">Constructor</h3>
+<h2 id="usage-17">Usage</h2>
+<h3 id="constructor-12">Constructor</h3>
 <p>Creates a clock with a supplied node identifier or generates one automatically.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> clock = <span class="hljs-keyword">new</span> <span class="hljs-title function_">HYBRID_LOGICAL_CLOCK</span>(<span class="hljs-string">&quot;node-1&quot;</span>);
 
@@ -2904,8 +4452,8 @@ clock.<span class="hljs-title function_">update</span>(remoteTimestamp);
 </table>
 <p>The node identifier must not contain <code>:</code> because the timestamp uses colon-separated fields.</p>
 <p>The timestamp string is the canonical representation used for bus communication, CRDT operations, event ordering, and merge keys. Parsed tuples are used for computation rather than as wire representations.</p>
-<h2 id="usage-15">Usage</h2>
-<h3 id="constructor-9">Constructor</h3>
+<h2 id="usage-18">Usage</h2>
+<h3 id="constructor-13">Constructor</h3>
 <p>Creates an HLC instance with a supplied node identifier or generates one automatically.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> clock = <span class="hljs-keyword">new</span> <span class="hljs-title function_">HYBRID_LOGICAL_CLOCK_CRDT</span>(<span class="hljs-string">&quot;node-1&quot;</span>);
 
@@ -3104,8 +4652,8 @@ clock.<span class="hljs-title function_">update</span>(remote);
 </tr>
 </tbody>
 </table>
-<h2 id="usage-16">Usage</h2>
-<h3 id="constructor-10">Constructor</h3>
+<h2 id="usage-19">Usage</h2>
+<h3 id="constructor-14">Constructor</h3>
 <p>Creates a register associated with a node ID and HLC instance. An optional initial value can be supplied.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> register = <span class="hljs-keyword">new</span> <span class="hljs-title function_">LWW_REGISTER</span>(
   <span class="hljs-string">&quot;node-1&quot;</span>,
@@ -3136,7 +4684,7 @@ clock.<span class="hljs-title function_">update</span>(remote);
   <span class="hljs-attr">stamp</span>: <span class="hljs-string">&quot;1732147200000:4:node-2&quot;</span>,
 });
 </code></pre>
-<h3 id="getstate"><code>getState</code></h3>
+<h3 id="getstate-4"><code>getState</code></h3>
 <p>Exports the current register value and timestamp.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> state = register.<span class="hljs-title function_">getState</span>();
 </code></pre>
@@ -3314,8 +4862,8 @@ clock.<span class="hljs-title function_">update</span>(remote);
 </table>
 <p>Default: <code>'add'</code>.</p>
 <p>When equal timestamps have different node IDs, the lexicographically higher node ID wins, regardless of the configured bias.</p>
-<h2 id="usage-17">Usage</h2>
-<h3 id="constructor-11">Constructor</h3>
+<h2 id="usage-20">Usage</h2>
+<h3 id="constructor-15">Constructor</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> set = <span class="hljs-keyword">new</span> <span class="hljs-title function_">LWW_ELEMENTAL</span>();
 
 <span class="hljs-keyword">const</span> removeWinsSet = <span class="hljs-keyword">new</span> <span class="hljs-title function_">LWW_ELEMENTAL</span>(<span class="hljs-string">&#x27;remove&#x27;</span>);
@@ -3368,7 +4916,7 @@ set.<span class="hljs-title function_">add</span>(<span class="hljs-string">&quo
 </tr>
 </tbody>
 </table>
-<h3 id="values-1"><code>values</code></h3>
+<h3 id="values-4"><code>values</code></h3>
 <p>Returns an array containing all active elements.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> activeElements = set.<span class="hljs-title function_">values</span>();
 </code></pre>
@@ -3486,8 +5034,8 @@ set.<span class="hljs-title function_">merge</span>(remoteState);
 </tr>
 </tbody>
 </table>
-<h2 id="usage-18">Usage</h2>
-<h3 id="constructor-12">Constructor</h3>
+<h2 id="usage-21">Usage</h2>
+<h3 id="constructor-16">Constructor</h3>
 <p>Creates a register associated with a node ID and HLC instance. An optional initial value is written immediately.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> reg = <span class="hljs-keyword">new</span> <span class="hljs-variable constant_">MV_REGISTER</span>&lt;<span class="hljs-built_in">string</span>&gt;(
   staff.<span class="hljs-property">instanceId</span>,
@@ -3506,7 +5054,7 @@ set.<span class="hljs-title function_">merge</span>(remoteState);
 <pre><code class="language-ts">reg.<span class="hljs-title function_">set</span>(<span class="hljs-string">&quot;value-a&quot;</span>);
 reg.<span class="hljs-title function_">set</span>(<span class="hljs-string">&quot;value-b&quot;</span>);
 </code></pre>
-<h3 id="values-2"><code>values</code></h3>
+<h3 id="values-5"><code>values</code></h3>
 <p>Returns the values of all currently retained entries.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> currentValues = reg.<span class="hljs-title function_">values</span>();
 </code></pre>
@@ -3541,7 +5089,7 @@ reg.<span class="hljs-title function_">set</span>(<span class="hljs-string">&quo
 <p>Merging serialized entries:</p>
 <pre><code class="language-ts">reg.<span class="hljs-title function_">merge</span>(remoteRegister.<span class="hljs-title function_">getState</span>());
 </code></pre>
-<h3 id="getstate-1"><code>getState</code></h3>
+<h3 id="getstate-5"><code>getState</code></h3>
 <p>Exports all current entries as an array suitable for state transfer or replication.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> state = reg.<span class="hljs-title function_">getState</span>();
 </code></pre>
@@ -3677,8 +5225,8 @@ reg.<span class="hljs-title function_">set</span>(<span class="hljs-string">&quo
 </tr>
 </tbody>
 </table>
-<h2 id="usage-19">Usage</h2>
-<h3 id="constructor-13">Constructor</h3>
+<h2 id="usage-22">Usage</h2>
+<h3 id="constructor-17">Constructor</h3>
 <p>Creates a set using a node identifier and HLC instance.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> set = <span class="hljs-keyword">new</span> <span class="hljs-variable constant_">OR_SET</span>&lt;<span class="hljs-built_in">string</span>&gt;(
   <span class="hljs-string">&quot;node-1&quot;</span>,
@@ -3700,7 +5248,7 @@ set.<span class="hljs-title function_">add</span>(<span class="hljs-string">&quo
 <p>Checks whether an item has at least one addition tag that has not been removed.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> exists = set.<span class="hljs-title function_">has</span>(<span class="hljs-string">&quot;apple&quot;</span>);
 </code></pre>
-<h3 id="values-3"><code>values</code></h3>
+<h3 id="values-6"><code>values</code></h3>
 <p>Returns unique active items, excluding entries whose tags have been removed.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> activeItems = set.<span class="hljs-title function_">values</span>();
 </code></pre>
@@ -3718,7 +5266,7 @@ set.<span class="hljs-title function_">add</span>(<span class="hljs-string">&quo
 <li>Removal tombstones are added to the local removal set.</li>
 </ul>
 <p>Neither collection removes existing records during merging.</p>
-<h3 id="getstate-2"><code>getState</code></h3>
+<h3 id="getstate-6"><code>getState</code></h3>
 <p>Exports the current additions and removal tombstones.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> state = set.<span class="hljs-title function_">getState</span>();
 </code></pre>
@@ -3864,8 +5412,8 @@ set.<span class="hljs-title function_">add</span>(<span class="hljs-string">&quo
 </tbody>
 </table>
 <p>The default reconciliation behavior returns the actual value supplied to <code>confirm()</code>.</p>
-<h2 id="usage-20">Usage</h2>
-<h3 id="constructor-14">Constructor</h3>
+<h2 id="usage-23">Usage</h2>
+<h3 id="constructor-18">Constructor</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> optimistic = <span class="hljs-keyword">new</span> <span class="hljs-title function_">OPTIMISTIC</span>(bus, {
   <span class="hljs-attr">crossTabSync</span>: <span class="hljs-literal">true</span>,
   <span class="hljs-attr">channelName</span>: <span class="hljs-string">&quot;document-sync&quot;</span>,
@@ -3934,7 +5482,7 @@ set.<span class="hljs-title function_">add</span>(<span class="hljs-string">&quo
 </code></pre>
 <p>Mutations above the failed mutation remain in the stack and are replayed without the removed layer.</p>
 <p>If the stack becomes empty, the entity's stack is deleted.</p>
-<h3 id="getstate-3"><code>getState</code></h3>
+<h3 id="getstate-7"><code>getState</code></h3>
 <p>Returns the entity's current UI-facing state by applying every mutation in order over its confirmed base.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> <span class="hljs-variable language_">document</span> = optimistic.<span class="hljs-property">getState</span>&lt;<span class="hljs-title class_">Document</span>&gt;(
   <span class="hljs-string">&quot;document:42&quot;</span>,
@@ -4005,7 +5553,7 @@ set.<span class="hljs-title function_">add</span>(<span class="hljs-string">&quo
 <li><code>negative</code>: accumulated decrements.</li>
 </ul>
 <p>The counter's value is the sum of all positive contributions minus the sum of all negative contributions.</p>
-<h2 id="usage-21">USAGE</h2>
+<h2 id="usage-24">USAGE</h2>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> likes = <span class="hljs-keyword">new</span> <span class="hljs-title function_">PN_COUNTER</span>(staff.<span class="hljs-property">instanceId</span>);
 
 likes.<span class="hljs-title function_">increment</span>();
@@ -4113,7 +5661,7 @@ staff.<span class="hljs-title function_">sendsub</span>(<span class="hljs-string
 <li><strong>Commutative:</strong> merge order does not affect the result.</li>
 <li><strong>Associative:</strong> grouping merges does not affect the result.</li>
 </ul>
-<h2 id="delta-synchronization">DELTA SYNCHRONIZATION</h2>
+<h2 id="delta-synchronization-2">DELTA SYNCHRONIZATION</h2>
 <p><code>delta()</code> returns only the current replica's entries:</p>
 <pre><code class="language-ts">{
     <span class="hljs-attr">positive</span>: {
@@ -4128,7 +5676,7 @@ staff.<span class="hljs-title function_">sendsub</span>(<span class="hljs-string
  <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[DRSHeartbeatManager]</span> </strong></summary>
 <p>A heartbeat manager that tracks active nodes using an <code>OR_SET</code> and periodically broadcasts the current membership state through a supplied send function.</p>
 <p>The manager uses a <code>HYBRID_LOGICAL_CLOCK</code> to advance its clock during periodic and manual check-ins.</p>
-<h2 id="usage-22">USAGE</h2>
+<h2 id="usage-25">USAGE</h2>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> heartbeat = <span class="hljs-keyword">new</span> <span class="hljs-title class_">DRSHeartbeatManager</span>(
     staff.<span class="hljs-property">instanceId</span>,
     hlc,
@@ -4248,7 +5796,7 @@ heartbeat.<span class="hljs-title function_">start</span>(<span class="hljs-func
 <li>Invokes <code>onStateChange</code>, if supplied, with the current set values.</li>
 </ol>
 <p>Calling <code>start()</code> while an interval is already active does not create another interval.</p>
-<h2 id="state-synchronization">STATE SYNCHRONIZATION</h2>
+<h2 id="state-synchronization-4">STATE SYNCHRONIZATION</h2>
 <p>Incoming state is merged into the current OR-Set:</p>
 <pre><code class="language-ts">heartbeat.<span class="hljs-title function_">handleIncomingState</span>(remoteState);
 </code></pre>
@@ -4267,7 +5815,7 @@ heartbeat.<span class="hljs-title function_">start</span>(<span class="hljs-func
 <li><strong>Local mode:</strong> HLC-ordered acquisition queue, configurable capacity, automatic lease expiration, and permit renewal.</li>
 <li><strong>Distributed mode:</strong> RAFT-backed replicated state machine using committed log entries to coordinate permit acquisition, release, and renewal across nodes.</li>
 </ul>
-<h2 id="usage-23">USAGE</h2>
+<h2 id="usage-26">USAGE</h2>
 <h3 id="local-mode">Local mode</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> semaphore = <span class="hljs-keyword">new</span> <span class="hljs-title function_">SEMAPHORE</span>({
     <span class="hljs-attr">limit</span>: <span class="hljs-number">3</span>,
@@ -4610,7 +6158,7 @@ heartbeat.<span class="hljs-title function_">start</span>(<span class="hljs-func
 </tr>
 </tbody>
 </table>
-<h2 id="usage-24">USAGE</h2>
+<h2 id="usage-27">USAGE</h2>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> compactor = <span class="hljs-keyword">new</span> <span class="hljs-title function_">TOMBSTONE_COMPACTOR</span>(<span class="hljs-number">5000</span>);
 
 compactor.<span class="hljs-title function_">updatePeerWatermark</span>(<span class="hljs-string">&#x27;node-a&#x27;</span>, <span class="hljs-number">120</span>);
@@ -4684,7 +6232,7 @@ compactor.<span class="hljs-title function_">recordTombstone</span>(<span class=
 <p><code>isGloballyAcked()</code> checks the tombstone's causal context against the currently registered peer watermarks.</p>
 <p>For every peer recorded in the causal context, its current watermark must be greater than or equal to the required watermark.</p>
 <p>If no peers are registered, the method returns <code>false</code>.</p>
-<h2 id="compaction">COMPACTION</h2>
+<h2 id="compaction-1">COMPACTION</h2>
 <p><code>compact()</code> evaluates each recorded tombstone against two conditions:</p>
 <ol>
 <li><strong>Global acknowledgment:</strong> All peers represented in the tombstone's causal context have reached their required watermarks.</li>
@@ -4695,7 +6243,7 @@ compactor.<span class="hljs-title function_">recordTombstone</span>(<span class=
 <pre><code class="language-ts">id.<span class="hljs-property">length</span> * <span class="hljs-number">2</span> + <span class="hljs-number">32</span>
 </code></pre>
 <p>The method returns the number of removed tombstones, estimated reclaimed bytes, and current global minimum watermark.</p>
-<h2 id="clear">CLEAR</h2>
+<h2 id="clear-1">CLEAR</h2>
 <pre><code class="language-ts">compactor.<span class="hljs-title function_">clear</span>();
 </code></pre>
 <p>Resets all tracked state:</p>
@@ -4708,7 +6256,7 @@ compactor.<span class="hljs-title function_">recordTombstone</span>(<span class=
  <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[YMIR]</span> </strong></summary>
 <p>A generic server-state synchronization class that maintains local and server values, supports subscriptions, optimistic updates, retry handling, and configurable conflict resolution.</p>
 <p>Successful writes update the local and server values, notify subscribers, and synchronize the resolved value through the staff SSE and messaging interfaces.</p>
-<h2 id="usage-25">USAGE</h2>
+<h2 id="usage-28">USAGE</h2>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> ymir = <span class="hljs-keyword">new</span> <span class="hljs-variable constant_">YMIR</span>&lt;<span class="hljs-title class_">User</span>&gt;(
     staff,
     <span class="hljs-string">&#x27;user:42&#x27;</span>,
@@ -4764,7 +6312,7 @@ compactor.<span class="hljs-title function_">recordTombstone</span>(<span class=
 </tr>
 </tbody>
 </table>
-<h2 id="constructor-15">CONSTRUCTOR</h2>
+<h2 id="constructor-19">CONSTRUCTOR</h2>
 <pre><code class="language-ts"><span class="hljs-title function_">constructor</span>(<span class="hljs-params">
     staff: <span class="hljs-built_in">any</span>,
     key: <span class="hljs-built_in">string</span>,
@@ -5735,7 +7283,7 @@ staff.<span class="hljs-title function_">send</span>(<span class="hljs-string">&
 </table>
 <p>Storage operations are browser-only. On the server, reads return their empty or unavailable result and writes return without performing an operation.</p>
 <p><code>set</code> and <code>update</code> resolve any pending <code>waitFor</code> calls for the key before completing the write.</p>
-<h3 id="usage-26">Usage</h3>
+<h3 id="usage-29">Usage</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">await</span> cache.<span class="hljs-title function_">set</span>(<span class="hljs-string">&#x27;user&#x27;</span>, { <span class="hljs-attr">id</span>: <span class="hljs-number">1</span>, <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;Ada&#x27;</span> })
 
 <span class="hljs-keyword">const</span> user = cache.<span class="hljs-title function_">get</span>(<span class="hljs-string">&#x27;user&#x27;</span>)
@@ -6024,7 +7572,7 @@ staff.<span class="hljs-title function_">send</span>(<span class="hljs-string">&
 </table>
 <p>Storage operations are browser-only. On the server, reads return their empty or unavailable result and writes return without performing an operation.</p>
 <p><code>set</code> and <code>update</code> resolve pending <code>waitFor</code> calls for the key before completing the write.</p>
-<h3 id="usage-27">Usage</h3>
+<h3 id="usage-30">Usage</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">await</span> cookie.<span class="hljs-title function_">set</span>(<span class="hljs-string">&#x27;session&#x27;</span>, { <span class="hljs-attr">token</span>: <span class="hljs-string">&#x27;abc&#x27;</span> }, {
     <span class="hljs-attr">maxAge</span>: <span class="hljs-number">3600</span>,
     <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;/&#x27;</span>,
@@ -6329,7 +7877,7 @@ staff.<span class="hljs-title function_">send</span>(<span class="hljs-string">&
 </table>
 <p>Operations that access global values are browser-only. On the server, reads return their unavailable result and writes return without performing an operation.</p>
 <p><code>set</code> and <code>update</code> resolve pending <code>waitFor</code> calls for the label before completing the write.</p>
-<h3 id="usage-28">Usage</h3>
+<h3 id="usage-31">Usage</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">await</span> gt.<span class="hljs-title function_">set</span>(<span class="hljs-string">&#x27;APP_CONFIG&#x27;</span>, {
     <span class="hljs-attr">theme</span>: <span class="hljs-string">&#x27;dark&#x27;</span>,
     <span class="hljs-attr">enabled</span>: <span class="hljs-literal">true</span>
@@ -6504,7 +8052,7 @@ staff.<span class="hljs-title function_">send</span>(<span class="hljs-string">&
 </code></pre>
 <p><code>indexed_db</code> is the exported shared instance.</p>
 <h2 id="configuration-6">CONFIGURATION</h2>
-<h3 id="constructor-16">Constructor</h3>
+<h3 id="constructor-20">Constructor</h3>
 <pre><code class="language-ts"><span class="hljs-title function_">constructor</span>(<span class="hljs-params">
     k: A = <span class="hljs-string">&#x27;_DB_STORE_NAME_LAYER_&#x27;</span>,
     sl: A = <span class="hljs-string">&#x27;_DB_NAME_LAYER_&#x27;</span>,
@@ -6693,7 +8241,7 @@ staff.<span class="hljs-title function_">send</span>(<span class="hljs-string">&
 <p>Storage methods use the configured object store and IndexedDB transactions.</p>
 <p>The <code>get</code> method checks the memory cache first, then reads from IndexedDB. Retrieved values are cached in serialized form.</p>
 <p><code>set</code> and <code>update</code> resolve pending <code>waitFor</code> calls for the key before completing the write.</p>
-<h3 id="usage-29">Usage</h3>
+<h3 id="usage-32">Usage</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">await</span> indexed_db.<span class="hljs-title function_">set</span>(<span class="hljs-string">&#x27;user&#x27;</span>, {
     <span class="hljs-attr">id</span>: <span class="hljs-number">1</span>,
     <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;Ada&#x27;</span>
@@ -6880,7 +8428,7 @@ staff.<span class="hljs-title function_">send</span>(<span class="hljs-string">&
 </tr>
 </tbody>
 </table>
-<h3 id="usage-30">Usage</h3>
+<h3 id="usage-33">Usage</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">await</span> indexed_db.<span class="hljs-title function_">createIndex</span>(
     <span class="hljs-string">&#x27;email&#x27;</span>,
     <span class="hljs-string">&#x27;email&#x27;</span>,
@@ -7088,7 +8636,7 @@ indexed_db.<span class="hljs-title function_">close</span>()
 </tr>
 </tbody>
 </table>
-<h3 id="constructor-17">Constructor</h3>
+<h3 id="constructor-21">Constructor</h3>
 <pre><code class="language-ts"><span class="hljs-title function_">constructor</span>(<span class="hljs-params">opts: IndexedDbOptions = {}</span>)
 </code></pre>
 <p>Initializes the database configuration, memory cache, transaction queue, subscribers, BroadcastChannel, and Hybrid Logical Clock.</p>
@@ -7192,7 +8740,7 @@ indexed_db.<span class="hljs-title function_">close</span>()
 </ul>
 <p>Migrations execute during <code>onupgradeneeded</code>, starting at <code>oldVersion + 1</code> and continuing through the configured version.</p>
 <p>The configured object store is created when it does not already exist.</p>
-<h3 id="usage-31">Usage</h3>
+<h3 id="usage-34">Usage</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> db = <span class="hljs-keyword">new</span> <span class="hljs-title function_">INDEXED_DB</span>({
     <span class="hljs-attr">dbName</span>: <span class="hljs-string">&#x27;app&#x27;</span>,
     <span class="hljs-attr">storeName</span>: <span class="hljs-string">&#x27;records&#x27;</span>
@@ -7372,7 +8920,7 @@ db.<span class="hljs-title function_">defineMigration</span>(<span class="hljs-n
 <p>The memory record receives an HLC timestamp, node ID, and local timestamp.</p>
 <h3 id="updatet--akey-s-updater-prev-t--undefined--t-chain-chain"><code>update&lt;T = A&gt;(key: S, updater: (prev: T | undefined) =&gt; T, chain?: CHAIN)</code></h3>
 <p>Retrieves the previous value, passes it to the updater, stores the resulting value, and returns it through <code>MCR_Combo</code>.</p>
-<h3 id="usage-32">Usage</h3>
+<h3 id="usage-35">Usage</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> db = <span class="hljs-variable constant_">IDB_KV</span>
 
 <span class="hljs-keyword">await</span> db.<span class="hljs-title function_">set</span>(<span class="hljs-string">&#x27;user&#x27;</span>, {
@@ -7426,7 +8974,7 @@ db.<span class="hljs-title function_">defineMigration</span>(<span class="hljs-n
 <p>The selector extracts a value from each update. The callback fires on the first notification and subsequently only when <code>Object.is</code> detects a changed selected value.</p>
 <h3 id="_emitkey-s-value-a-void"><code>_emit(key: S, value: A): void</code></h3>
 <p>Notifies all subscribers registered for a key.</p>
-<h3 id="usage-33">Usage</h3>
+<h3 id="usage-36">Usage</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> unsubscribe = db.<span class="hljs-property">subscribe</span>&lt;<span class="hljs-title class_">User</span>&gt;(
     <span class="hljs-string">&#x27;user&#x27;</span>,
     <span class="hljs-function">(<span class="hljs-params">user</span>) =&gt;</span> {
@@ -7771,7 +9319,7 @@ db.<span class="hljs-title function_">invalidateMemory</span>()
 </tbody>
 </table>
 <p>Local writes are broadcast through <code>_broadcast(key, value, storageType, fn)</code>. The <code>_localChange</code> flag is used to skip the corresponding locally initiated channel message.</p>
-<h2 id="usage-34">Usage</h2>
+<h2 id="usage-37">Usage</h2>
 <pre><code class="language-ts"><span class="hljs-keyword">import</span> { ls } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;./local_storage&#x27;</span>
 
 <span class="hljs-comment">// Store values</span>
@@ -7984,7 +9532,7 @@ registry.<span class="hljs-property">set</span>&lt;<span class="hljs-built_in">n
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> value = <span class="hljs-title function_">getGR</span>(<span class="hljs-string">&#x27;APP_STATE&#x27;</span>, <span class="hljs-string">&#x27;SAURON&#x27;</span>)
 </code></pre>
 <p>The <code>registry</code> argument is part of the function signature but is not used by the implementation.</p>
-<h2 id="usage-35">USAGE</h2>
+<h2 id="usage-38">USAGE</h2>
 <pre><code class="language-ts"><span class="hljs-keyword">import</span> {
     createRegistry,
     getRegistry,
@@ -8256,7 +9804,7 @@ registry.<span class="hljs-property">set</span>&lt;<span class="hljs-built_in">n
 </code></pre>
 <p>The final queued value is committed once, producing one update and notification cycle.</p>
 <h2 id="lifecycle-1">LIFECYCLE</h2>
-<h3 id="clear-1"><code>clear()</code></h3>
+<h3 id="clear-2"><code>clear()</code></h3>
 <p>Clears all internal state and subscriptions:</p>
 <ul>
 <li><code>_state</code></li>
@@ -8269,7 +9817,7 @@ registry.<span class="hljs-property">set</span>&lt;<span class="hljs-built_in">n
 <h3 id="destroy-2"><code>destroy()</code></h3>
 <p>Calls <code>registry.clear()</code>.</p>
 <p>Unlike the globally named registry implementation, this scoped registry does not maintain a global registry collection or remove itself from one.</p>
-<h2 id="usage-36">USAGE</h2>
+<h2 id="usage-39">USAGE</h2>
 <pre><code class="language-ts"><span class="hljs-keyword">import</span> { createScopedReg } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;./scoped_registries&#x27;</span>
 
 <span class="hljs-comment">// Create independent registries</span>
@@ -9216,7 +10764,7 @@ store.<span class="hljs-property">set</span>&lt;<span class="hljs-built_in">numb
 </tr>
 </tbody>
 </table>
-<h3 id="usage-37">Usage</h3>
+<h3 id="usage-40">Usage</h3>
 <pre><code class="language-ts"><span class="hljs-comment">// Set and retrieve values</span>
 <span class="hljs-title function_">set</span>(<span class="hljs-string">&#x27;user&#x27;</span>, { <span class="hljs-attr">id</span>: <span class="hljs-number">1</span>, <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;User&#x27;</span> })
 
@@ -10236,8 +11784,230 @@ controller.<span class="hljs-title function_">abort</span>();
 </table>
 </details>
 <h2 id="logic-gates">LOGIC GATES</h2>
+ <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[GATE_SMASHER]</span> </strong></summary>
+<h1 id="gatesmasher"><code>GATESMASHER</code></h1>
+<p><code>GateSmasher</code> asynchronously evaluates a value against a dynamically supplied collection of gates. Each gate has a matching function and an execution function. The evaluator supports single-pass execution, first-match selection, and repeated evaluation.</p>
+<h2 id="types-4">Types</h2>
+<h3 id="gateresulttvalue-tresult"><code>GateResult&lt;TValue, TResult&gt;</code></h3>
+<p>Represents the outcome of evaluating one gate.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td><code>string</code></td>
+<td>Gate identifier from the gate map</td>
+</tr>
+<tr>
+<td><code>matched</code></td>
+<td><code>boolean</code></td>
+<td>Whether the gate matched successfully</td>
+</tr>
+<tr>
+<td><code>result</code></td>
+<td><code>TResult | undefined</code></td>
+<td>Execution result when matched</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>unknown</code></td>
+<td>Error thrown during matching or execution</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gatetvalue-tresult"><code>Gate&lt;TValue, TResult&gt;</code></h3>
+<p>Defines an individual gate.</p>
+<pre><code class="language-ts"><span class="hljs-keyword">type</span> <span class="hljs-title class_">Gate</span>&lt;<span class="hljs-title class_">TValue</span>, <span class="hljs-title class_">TResult</span>&gt; = {
+  <span class="hljs-attr">match</span>: <span class="hljs-function">(<span class="hljs-params">value: TValue</span>) =&gt;</span> <span class="hljs-built_in">boolean</span> | <span class="hljs-title class_">Promise</span>&lt;<span class="hljs-built_in">boolean</span>&gt;;
+  <span class="hljs-attr">execute</span>: <span class="hljs-function">(<span class="hljs-params">value: TValue</span>) =&gt;</span> <span class="hljs-title class_">TResult</span> | <span class="hljs-title class_">Promise</span>&lt;<span class="hljs-title class_">TResult</span>&gt;;
+};
+</code></pre>
+<ul>
+<li><code>match</code> determines whether the supplied value qualifies.</li>
+<li><code>execute</code> runs when <code>match</code> returns <code>true</code>.</li>
+<li>Both functions support synchronous and asynchronous implementations.</li>
+</ul>
+<h3 id="gatemaptvalue-tresult"><code>GateMap&lt;TValue, TResult&gt;</code></h3>
+<p>A string-keyed collection of gates.</p>
+<pre><code class="language-ts"><span class="hljs-keyword">type</span> <span class="hljs-title class_">GateMap</span>&lt;<span class="hljs-title class_">TValue</span>, <span class="hljs-title class_">TResult</span>&gt; = <span class="hljs-title class_">Record</span>&lt;<span class="hljs-built_in">string</span>, <span class="hljs-title class_">Gate</span>&lt;<span class="hljs-title class_">TValue</span>, <span class="hljs-title class_">TResult</span>&gt;&gt;;
+</code></pre>
+<h3 id="gatesmashermode"><code>GateSmasherMode</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">type</span> <span class="hljs-title class_">GateSmasherMode</span> = <span class="hljs-string">&quot;all&quot;</span> | <span class="hljs-string">&quot;first&quot;</span> | <span class="hljs-string">&quot;repeat-all&quot;</span>;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>all</code></td>
+<td>Evaluates every gate once and returns all results</td>
+</tr>
+<tr>
+<td><code>first</code></td>
+<td>Evaluates gates in order and returns the first successful match</td>
+</tr>
+<tr>
+<td><code>repeat-all</code></td>
+<td>Re-evaluates the complete gate collection until <code>stopWhen</code> returns <code>true</code> or <code>maxRuns</code> is reached</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gatesmasheroptions"><code>GateSmasherOptions</code></h3>
+<pre><code class="language-ts"><span class="hljs-keyword">type</span> <span class="hljs-title class_">GateSmasherOptions</span> = {
+  mode?: <span class="hljs-title class_">GateSmasherMode</span>;
+  maxRuns?: <span class="hljs-built_in">number</span>;
+  stopWhen?: <span class="hljs-function">(<span class="hljs-params">
+    results: GateResult&lt;<span class="hljs-built_in">unknown</span>, <span class="hljs-built_in">unknown</span>&gt;[],
+    run: <span class="hljs-built_in">number</span>
+  </span>) =&gt;</span> <span class="hljs-built_in">boolean</span>;
+};
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mode</code></td>
+<td><code>&quot;all&quot;</code></td>
+<td>Evaluation strategy</td>
+</tr>
+<tr>
+<td><code>maxRuns</code></td>
+<td><code>Infinity</code></td>
+<td>Maximum number of evaluation passes; relevant to <code>repeat-all</code> and <code>first</code></td>
+</tr>
+<tr>
+<td><code>stopWhen</code></td>
+<td><code>() =&gt; false</code></td>
+<td>Determines whether repeated evaluation should stop</td>
+</tr>
+</tbody>
+</table>
+<p><code>maxRuns</code> must be at least <code>1</code>; otherwise, <code>GateSmasher</code> throws an error.</p>
+<h2 id="gatesmasher-1"><code>GateSmasher</code></h2>
+<pre><code class="language-ts"><span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title class_">GateSmasher</span>&lt;
+  <span class="hljs-title class_">TValue</span>,
+  <span class="hljs-title class_">TResult</span> = <span class="hljs-built_in">unknown</span>,
+  <span class="hljs-title class_">TGateMap</span> <span class="hljs-keyword">extends</span> <span class="hljs-title class_">GateMap</span>&lt;<span class="hljs-title class_">TValue</span>, <span class="hljs-title class_">TResult</span>&gt; = <span class="hljs-title class_">GateMap</span>&lt;<span class="hljs-title class_">TValue</span>, <span class="hljs-title class_">TResult</span>&gt;
+&gt;(
+  <span class="hljs-attr">valueToEvalOn</span>: <span class="hljs-title class_">TValue</span>,
+  <span class="hljs-attr">getGates</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-title class_">TGateMap</span>,
+  <span class="hljs-attr">options</span>: <span class="hljs-title class_">GateSmasherOptions</span> = {}
+): <span class="hljs-title class_">Promise</span>&lt;<span class="hljs-title class_">GateResult</span>&lt;<span class="hljs-title class_">TValue</span>, <span class="hljs-title class_">TResult</span>&gt;[]&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>valueToEvalOn</code></td>
+<td>Value passed to every gate's <code>match</code> and <code>execute</code> functions</td>
+</tr>
+<tr>
+<td><code>getGates</code></td>
+<td>Function returning the gate collection for each evaluation pass</td>
+</tr>
+<tr>
+<td><code>options</code></td>
+<td>Optional evaluation mode and stopping configuration</td>
+</tr>
+</tbody>
+</table>
+<p>Returns a promise containing the collected gate results.</p>
+<h3 id="evaluation-behavior">Evaluation behavior</h3>
+<p><strong><code>all</code></strong></p>
+<ul>
+<li>Calls <code>getGates()</code> once.</li>
+<li>Evaluates every gate in object-entry order.</li>
+<li>Executes matching gates.</li>
+<li>Returns the result of every gate, including non-matches and errors.</li>
+</ul>
+<p><strong><code>first</code></strong></p>
+<ul>
+<li>Calls <code>getGates()</code> for each pass.</li>
+<li>Evaluates gates in object-entry order.</li>
+<li>Returns immediately when a gate successfully matches and executes.</li>
+<li>The returned array contains only the first matching result.</li>
+<li>If no gate matches, another pass is performed until <code>maxRuns</code> is reached.</li>
+</ul>
+<p><strong><code>repeat-all</code></strong></p>
+<ul>
+<li>Calls <code>getGates()</code> on every pass, allowing the gate collection to change between runs.</li>
+<li>Evaluates every gate on each pass.</li>
+<li>Appends each pass's results to the accumulated result array.</li>
+<li>Calls <code>stopWhen(allResults, run)</code> after each complete pass.</li>
+<li>Stops when the callback returns <code>true</code> or <code>maxRuns</code> is reached.</li>
+</ul>
+<h3 id="error-handling">Error handling</h3>
+<p>Each gate is evaluated inside its own <code>try/catch</code>.</p>
+<ul>
+<li>A non-matching gate produces <code>{ key, matched: false }</code>.</li>
+<li>A matching gate produces <code>{ key, matched: true, result }</code>.</li>
+<li>An error from either <code>match</code> or <code>execute</code> produces <code>{ key, matched: false, error }</code>.</li>
+<li>An individual gate error does not prevent subsequent gates from being evaluated.</li>
+</ul>
+<h2 id="usage-41">Usage</h2>
+<h3 id="basic-evaluation">Basic evaluation</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> results = <span class="hljs-keyword">await</span> <span class="hljs-title class_">GateSmasher</span>(
+  value,
+  <span class="hljs-function">() =&gt;</span> ({
+    <span class="hljs-attr">isNumber</span>: {
+      <span class="hljs-attr">match</span>: <span class="hljs-function">(<span class="hljs-params">v</span>) =&gt;</span> <span class="hljs-keyword">typeof</span> v === <span class="hljs-string">&quot;number&quot;</span>,
+      <span class="hljs-attr">execute</span>: <span class="hljs-function">(<span class="hljs-params">v</span>) =&gt;</span> v * <span class="hljs-number">2</span>,
+    },
+    <span class="hljs-attr">isPositive</span>: {
+      <span class="hljs-attr">match</span>: <span class="hljs-function">(<span class="hljs-params">v</span>) =&gt;</span> <span class="hljs-keyword">typeof</span> v === <span class="hljs-string">&quot;number&quot;</span> &amp;&amp; v &gt; <span class="hljs-number">0</span>,
+      <span class="hljs-attr">execute</span>: <span class="hljs-function">(<span class="hljs-params">v</span>) =&gt;</span> <span class="hljs-string">&quot;positive&quot;</span>,
+    },
+  })
+);
+</code></pre>
+<h3 id="first-successful-match">First successful match</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> result = <span class="hljs-keyword">await</span> <span class="hljs-title class_">GateSmasher</span>(value, getGates, {
+  <span class="hljs-attr">mode</span>: <span class="hljs-string">&quot;first&quot;</span>,
+});
+</code></pre>
+<h3 id="repeated-evaluation">Repeated evaluation</h3>
+<pre><code class="language-ts"><span class="hljs-keyword">const</span> results = <span class="hljs-keyword">await</span> <span class="hljs-title class_">GateSmasher</span>(value, getGates, {
+  <span class="hljs-attr">mode</span>: <span class="hljs-string">&quot;repeat-all&quot;</span>,
+  <span class="hljs-attr">maxRuns</span>: <span class="hljs-number">10</span>,
+  <span class="hljs-attr">stopWhen</span>: <span class="hljs-function">(<span class="hljs-params">results, run</span>) =&gt;</span>
+    results.<span class="hljs-title function_">some</span>(<span class="hljs-function">(<span class="hljs-params">entry</span>) =&gt;</span> entry.<span class="hljs-property">matched</span>),
+});
+</code></pre>
+<h2 id="exports-3">Exports</h2>
+<pre><code class="language-ts"><span class="hljs-keyword">export</span> { <span class="hljs-title class_">GateSmasher</span> };
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> {
+  <span class="hljs-title class_">Gate</span>,
+  <span class="hljs-title class_">GateMap</span>,
+  <span class="hljs-title class_">GateResult</span>,
+  <span class="hljs-title class_">GateSmasherMode</span>,
+  <span class="hljs-title class_">GateSmasherOptions</span>,
+};
+</code></pre>
+</details>
  <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[PLINKO]</span> </strong></summary>
-# `PlinkoSession`
+<h1 id="plinkosession"><code>PlinkoSession</code></h1>
 <p>Stateful evaluator for traversing a <code>PlinkoTree</code>. Maintains the active branch tier, current traversal path, session state, and shared metadata while evaluating payloads against node matchers and executing matched nodes.</p>
 <h2 id="class-1">CLASS</h2>
 <pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">PlinkoSession</span>&lt;<span class="hljs-title class_">TState</span> = <span class="hljs-built_in">any</span>, <span class="hljs-title class_">TPayload</span> = <span class="hljs-built_in">any</span>&gt;
@@ -10263,7 +12033,7 @@ controller.<span class="hljs-title function_">abort</span>();
 </tr>
 </tbody>
 </table>
-<h2 id="constructor-18">CONSTRUCTOR</h2>
+<h2 id="constructor-22">CONSTRUCTOR</h2>
 <pre><code class="language-ts"><span class="hljs-title function_">constructor</span>(<span class="hljs-params">
     initialState: TState,
     tree: PlinkoTree&lt;TState, TPayload&gt;,
@@ -10312,7 +12082,7 @@ controller.<span class="hljs-title function_">abort</span>();
 </tbody>
 </table>
 <h2 id="public-methods">PUBLIC METHODS</h2>
-<h3 id="getstate-4"><code>getState()</code></h3>
+<h3 id="getstate-8"><code>getState()</code></h3>
 <pre><code class="language-ts"><span class="hljs-title function_">getState</span>(): <span class="hljs-title class_">TState</span>
 </code></pre>
 <p>Returns the current session state.</p>
@@ -10458,7 +12228,7 @@ controller.<span class="hljs-title function_">abort</span>();
 <h1 id="apparation"><code>APPARATION</code></h1>
 <p><code>APPARATION</code> provides TypeScript utility types, type-level transformations, generic inference helpers, and runtime no-op values for satisfying interfaces and common JavaScript types without implementing their actual behavior.</p>
 <p>The module exports the <code>CreateApparation</code> class and a shared instance under both <code>a</code> and <code>Apparation</code>.</p>
-<h2 id="exports-3">EXPORTS</h2>
+<h2 id="exports-4">EXPORTS</h2>
 <table>
 <thead>
 <tr>
@@ -10976,7 +12746,7 @@ universal.<span class="hljs-property">onDisconnect</span>?.(<span class="hljs-fu
 <pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-variable constant_">SZU</span>&lt;T = <span class="hljs-title class_">Promise</span>&lt;<span class="hljs-built_in">any</span>&gt;&gt; =
   [T] <span class="hljs-keyword">extends</span> [<span class="hljs-literal">undefined</span>] ? <span class="hljs-literal">undefined</span> : T;
 </code></pre>
-<h2 id="usage-38">USAGE</h2>
+<h2 id="usage-42">USAGE</h2>
 <p>The shared instance is available through either export name:</p>
 <pre><code class="language-ts"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Apparation</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;./apparations&#x27;</span>;
 
@@ -11018,7 +12788,7 @@ universal.<span class="hljs-property">onDisconnect</span>?.(<span class="hljs-fu
 <h1 id="defer_engine"><code>DEFER_ENGINE</code></h1>
 <p><code>DEFER_ENGINE</code> is a dependency-driven task scheduler. Tasks register the dependency keys they require and execute when every key has been provided. Dependencies can be published individually or in batches, replaced with newer values, resolved without a meaningful value, or invalidated.</p>
 <p>The module exports the <code>DEFER_ENGINE</code> class and a shared instance named <code>DEFER_</code>.</p>
-<h2 id="exports-4">EXPORTS</h2>
+<h2 id="exports-5">EXPORTS</h2>
 <table>
 <thead>
 <tr>
@@ -11039,7 +12809,7 @@ universal.<span class="hljs-property">onDisconnect</span>?.(<span class="hljs-fu
 </table>
 <pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> <span class="hljs-variable constant_">DEFER_</span> = <span class="hljs-keyword">new</span> <span class="hljs-title function_">DEFER_ENGINE</span>();
 </code></pre>
-<h2 id="types-4">TYPES</h2>
+<h2 id="types-5">TYPES</h2>
 <table>
 <thead>
 <tr>
@@ -11099,7 +12869,7 @@ universal.<span class="hljs-property">onDisconnect</span>?.(<span class="hljs-fu
   <span class="hljs-attr">cancelled</span>: <span class="hljs-built_in">number</span>;
 };
 </code></pre>
-<h2 id="internal-state">INTERNAL STATE</h2>
+<h2 id="internal-state-3">INTERNAL STATE</h2>
 <p>Each engine maintains:</p>
 <table>
 <thead>
@@ -11145,7 +12915,7 @@ universal.<span class="hljs-property">onDisconnect</span>?.(<span class="hljs-fu
 </table>
 <p>The initial statistics are all zero.</p>
 <p>Default callbacks log task failures and successful fulfillment.</p>
-<h2 id="constructor-19">CONSTRUCTOR</h2>
+<h2 id="constructor-23">CONSTRUCTOR</h2>
 <pre><code class="language-ts"><span class="hljs-keyword">new</span> <span class="hljs-title function_">DEFER_ENGINE</span>()
 </code></pre>
 <p>Creates an empty scheduler with no registered dependencies or tasks.</p>
@@ -11326,7 +13096,7 @@ universal.<span class="hljs-property">onDisconnect</span>?.(<span class="hljs-fu
 </tbody>
 </table>
 <p>Statistics are cumulative and are not reset by <code>clear()</code>.</p>
-<h2 id="usage-39">USAGE</h2>
+<h2 id="usage-43">USAGE</h2>
 <h3 id="register-work-before-dependencies-are-available">Register work before dependencies are available</h3>
 <pre><code class="language-ts"><span class="hljs-variable constant_">DEFER_</span>.<span class="hljs-title function_">run</span>(
   [<span class="hljs-string">&#x27;DISPATCH_ENGINE._sub&#x27;</span>, <span class="hljs-string">&#x27;ATOM&#x27;</span>],
@@ -11552,7 +13322,7 @@ snapshot.<span class="hljs-property">running</span>;
 <pre><code class="language-ts"><span class="hljs-keyword">private</span> <span class="hljs-title function_">indexExports</span>(<span class="hljs-attr">key</span>: <span class="hljs-built_in">string</span>, <span class="hljs-attr">mod</span>: A): <span class="hljs-built_in">void</span>
 </code></pre>
 <p>Each export name maps to a collection of source module URLs and their corresponding export values.</p>
-<h2 id="usage-40">USAGE</h2>
+<h2 id="usage-44">USAGE</h2>
 <h3 id="load-a-module-during-initialization">Load a module during initialization</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">await</span> rifts.<span class="hljs-title function_">load</span>(<span class="hljs-string">&#x27;the-cloud/hook-system&#x27;</span>);
 </code></pre>
@@ -11645,7 +13415,7 @@ snapshot.<span class="hljs-property">running</span>;
 <p><code>NODE_MODULE_RIFTS</code> provides synchronous Node.js module loading through <code>require()</code>, with a shared module cache, named-export indexing, and direct module or export retrieval.</p>
 <p>Unlike <code>MODULE_RIFTS</code>, which uses dynamic <code>import()</code> and asynchronous loading, <code>NODE_MODULE_RIFTS</code> uses a <code>blindRequire</code> function and returns loaded modules synchronously.</p>
 <p>The module exports the <code>NODE_MODULE_RIFTS</code> class and a shared instance named <code>node_module_rifts</code>.</p>
-<h2 id="exports-5">EXPORTS</h2>
+<h2 id="exports-6">EXPORTS</h2>
 <table>
 <thead>
 <tr>
@@ -11790,7 +13560,7 @@ snapshot.<span class="hljs-property">running</span>;
 ): T | <span class="hljs-literal">undefined</span>
 </code></pre>
 <p>Delegates to <code>export(name, specifier)</code>.</p>
-<h2 id="usage-41">USAGE</h2>
+<h2 id="usage-45">USAGE</h2>
 <h3 id="load-a-nodejs-module">Load a Node.js module</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> fs = node_module_rifts.<span class="hljs-title function_">load</span>(<span class="hljs-string">&#x27;node:fs&#x27;</span>);
 </code></pre>
@@ -11883,7 +13653,7 @@ snapshot.<span class="hljs-property">running</span>;
 <h1 id="reactive_store"><code>REACTIVE_STORE</code></h1>
 <p><code>REACTIVE_STORE</code> is a lightweight keyed reactive store for <code>RiftRecord</code> values. It maintains records in a <code>Map</code> and supports per-key subscriptions. Updating a record notifies all listeners registered for that key.</p>
 <p>The module exports the <code>RiftRecord</code> interface and a shared store instance named <code>STORE</code>.</p>
-<h2 id="exports-6">EXPORTS</h2>
+<h2 id="exports-7">EXPORTS</h2>
 <table>
 <thead>
 <tr>
@@ -11902,7 +13672,7 @@ snapshot.<span class="hljs-property">running</span>;
 </tr>
 </tbody>
 </table>
-<h2 id="types-5">TYPES</h2>
+<h2 id="types-6">TYPES</h2>
 <h3 id="riftrecordt"><code>RiftRecord&lt;T&gt;</code></h3>
 <pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">RiftRecord</span>&lt;T = A&gt; {
   <span class="hljs-attr">opened</span>: B;
@@ -12019,7 +13789,7 @@ snapshot.<span class="hljs-property">running</span>;
 </code></pre>
 <h3 id="clear-void-2"><code>clear(): void</code></h3>
 <p>Clears all records and all subscriptions.</p>
-<h3 id="size-1"><code>size</code></h3>
+<h3 id="size-4"><code>size</code></h3>
 <p>Returns the number of stored records.</p>
 <pre><code class="language-ts"><span class="hljs-keyword">get</span> <span class="hljs-title function_">size</span>(): N
 </code></pre>
@@ -12027,7 +13797,7 @@ snapshot.<span class="hljs-property">running</span>;
 <pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> <span class="hljs-variable constant_">STORE</span> = <span class="hljs-keyword">new</span> <span class="hljs-title function_">REACTIVE_STORE</span>();
 </code></pre>
 <p><code>STORE</code> provides a shared store instance for keyed record access and subscriptions.</p>
-<h2 id="usage-42">USAGE</h2>
+<h2 id="usage-46">USAGE</h2>
 <h3 id="store-a-record">Store a record</h3>
 <pre><code class="language-ts"><span class="hljs-variable constant_">STORE</span>.<span class="hljs-title function_">set</span>(<span class="hljs-string">&#x27;module-1&#x27;</span>, {
   <span class="hljs-attr">opened</span>: <span class="hljs-literal">true</span>,
@@ -13011,7 +14781,7 @@ snapshot.<span class="hljs-property">running</span>;
 <h1 id="waiter_registry"><code>WAITER_REGISTRY</code></h1>
 <p><code>WAITER_REGISTRY</code> is a keyed dependency-waiting registry. It tracks callbacks against one or more signal keys and executes each callback when all registered dependencies have been marked ready.</p>
 <p>Unlike a single-key subscription mechanism, the registry maintains explicit indexes for pending waiters, allowing readiness notifications and cancellation to operate across multiple dependencies.</p>
-<h2 id="types-6">TYPES</h2>
+<h2 id="types-7">TYPES</h2>
 <h3 id="waiterdep"><code>WaiterDep</code></h3>
 <pre><code class="language-ts"><span class="hljs-keyword">type</span> <span class="hljs-title class_">WaiterDep</span> = <span class="hljs-title class_">SignalKey</span> | <span class="hljs-title class_">SignalKey</span>[];
 </code></pre>
@@ -13067,7 +14837,7 @@ snapshot.<span class="hljs-property">running</span>;
 <li><code>FULFIL_THIS_NOW(r)</code> replaces the root reference.</li>
 <li><code>REFRESH_ROOT()</code> retrieves the root through <code>acquire_root('WAITER_REGISTRY')</code>.</li>
 </ul>
-<h3 id="internal-state-1">Internal state</h3>
+<h3 id="internal-state-4">Internal state</h3>
 <table>
 <thead>
 <tr>
@@ -13131,7 +14901,7 @@ snapshot.<span class="hljs-property">running</span>;
 <li>Any empty <code>byKey</code> sets after removal.</li>
 </ul>
 <p>Returns whether an entry was removed.</p>
-<h2 id="usage-43">USAGE</h2>
+<h2 id="usage-47">USAGE</h2>
 <h3 id="single-dependency">Single dependency</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">public</span> waiters = <span class="hljs-keyword">new</span> <span class="hljs-title function_">WAITER_REGISTRY</span>();
 
@@ -13160,7 +14930,7 @@ waiters.<span class="hljs-title function_">CANCEL_WAIT</span>(id);
  <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[MICROTASKS]</span> </strong></summary>
 <h1 id="microtask"><code>MICROTASK</code></h1>
 <p>A microtask scheduling and batching utility built entirely on <code>queueMicrotask</code> and Promise-compatible microtask ordering. It deliberately avoids <code>process.nextTick</code> so scheduling behavior remains consistent across Node.js and Bun.</p>
-<h2 id="exports-7">Exports</h2>
+<h2 id="exports-8">Exports</h2>
 <table>
 <thead>
 <tr>
@@ -13207,7 +14977,7 @@ waiters.<span class="hljs-title function_">CANCEL_WAIT</span>(id);
 </tr>
 </tbody>
 </table>
-<h2 id="internal-state-2">Internal State</h2>
+<h2 id="internal-state-5">Internal State</h2>
 <table>
 <thead>
 <tr>
@@ -13349,7 +15119,7 @@ waiters.<span class="hljs-title function_">CANCEL_WAIT</span>(id);
  <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[PERFORMANCE TIMER]</span> </strong></summary>
 <h1 id="performance_timer"><code>PERFORMANCE_TIMER</code></h1>
 <p>A performance measurement and tracing utility built on Node.js <code>AsyncLocalStorage</code> and <code>performance.now()</code>. It records execution durations, nested timing relationships, checkpoints, success/failure status, and optional performance events through a supplied <code>staff</code> transport.</p>
-<h2 id="types-7">Types</h2>
+<h2 id="types-8">Types</h2>
 <h3 id="timingrecord"><code>TimingRecord</code></h3>
 <table>
 <thead>
@@ -14145,7 +15915,7 @@ tiers.<span class="hljs-title function_">REG</span>(<span class="hljs-number">2<
 </tr>
 </tbody>
 </table>
-<h3 id="clear-2"><code>clear()</code></h3>
+<h3 id="clear-3"><code>clear()</code></h3>
 <p>Clears staged tasks, underlying pending queues, and accumulated results.</p>
 <ul>
 <li>Staged task promises are rejected with <code>Tier ${tier} cleared before execution</code>.</li>
@@ -14178,7 +15948,7 @@ Tier 2
 # `SCHEDULER`
 <p>A priority-based cooperative task scheduler with per-scope queues, round-robin scope selection, cancellation, reprioritization, request scoping, yielding, and time-budgeted chunk execution.</p>
 <p>Tasks are organized by priority tier and execution scope. Within each priority tier, scopes are selected round-robin so that background work belonging to one request does not monopolize execution over other scopes at the same priority.</p>
-<h2 id="types-8">Types</h2>
+<h2 id="types-9">Types</h2>
 <h3 id="priority"><code>Priority</code></h3>
 <pre><code class="language-ts"><span class="hljs-keyword">type</span> <span class="hljs-title class_">Priority</span> =
     | <span class="hljs-string">&#x27;immediate&#x27;</span>
@@ -14674,7 +16444,7 @@ Tier 2
 </tr>
 </tbody>
 </table>
-<h2 id="usage-44">Usage</h2>
+<h2 id="usage-48">Usage</h2>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> mirror = <span class="hljs-title function_">zeroNexusMirror</span>(<span class="hljs-string">&quot;excludedCategory&quot;</span>);
 
 <span class="hljs-keyword">const</span> category = mirror.<span class="hljs-property">someCategory</span>;
@@ -14998,7 +16768,7 @@ ${sl_reg}_PERSIST_KEYS
 <h3 id="deletekey-1"><code>delete(key)</code></h3>
 <p>Deletes a key and notifies waiters with <code>undefined</code>.</p>
 <p>Returns <code>false</code> when the key does not exist and <code>true</code> when deletion succeeds.</p>
-<h3 id="clear-3"><code>clear()</code></h3>
+<h3 id="clear-4"><code>clear()</code></h3>
 <p>Notifies waiters for existing keys with <code>undefined</code>, then clears the primary data map.</p>
 <h3 id="gettkey-fallback"><code>get&lt;T&gt;(key, fallback?)</code></h3>
 <p>Retrieves a value, returning the optional fallback when the key does not exist.</p>
@@ -15211,7 +16981,7 @@ ${sl_reg}_PERSIST_KEYS
 <pre><code class="language-ts">store.<span class="hljs-title function_">freeze</span>();
 </code></pre>
 <p>Prevents subsequent calls to the direct <code>set</code> method. A frozen store throws <code>Error(&quot;Store is frozen&quot;)</code> when <code>set</code> is called.</p>
-<h2 id="usage-45">Usage</h2>
+<h2 id="usage-49">Usage</h2>
 <h3 id="key-specific-subscriptions">Key-specific subscriptions</h3>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> store = <span class="hljs-built_in">require</span>(<span class="hljs-string">&quot;./store&quot;</span>);
 
@@ -15420,7 +17190,7 @@ store.<span class="hljs-property">store</span>.<span class="hljs-title function_
 </tr>
 </tbody>
 </table>
-<h2 id="usage-46">Usage</h2>
+<h2 id="usage-50">Usage</h2>
 <pre><code class="language-ts"><span class="hljs-keyword">const</span> { pass2, refs } = <span class="hljs-title function_">zeroTwoPassCollection</span>(
     <span class="hljs-string">&quot;category&quot;</span>,
     <span class="hljs-function">(<span class="hljs-params">ctx</span>) =&gt;</span> ({

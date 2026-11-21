@@ -1,3 +1,49 @@
+
+<div align="left" style="position: relative;">
+<img src="./icons/darthvader.svg" align="right" width="30%" style="margin: -20px 0 0 20px;">
+
+<h3  style="font-size:26px;">SOLUTIONS: <span style="font-size:16px;">Class utils, CRDT's, Date & Time, DB's, Encryption, HTTP, Logic Gates, Module Control, Performance and more...</span></h3>
+
+<p align="left"><em>The most opinionated platform... ever.</em></p>
+<p align="left"><em>Trust me... I'm a fucking wizard... 🧙</em></p>
+<p align="left">Platforms stats:</p>
+<p align="left">
+<img src="https://img.shields.io/badge/LINES OF CODE- 10,300,000-95ED27?style=flat">
+<img src="https://img.shields.io/badge/FEATURES- UNKNOWN-95ED27?style=flat">
+<img src="https://img.shields.io/badge/REACTS RULES ON HOOKS- 0-95ED27?style=flat">
+<img src="https://img.shields.io/badge/DISRUPTORS- 18+-95ED27?style=flat">
+<img src="https://img.shields.io/badge/MESSAGE QUEUES- 5-95ED27?style=flat">
+</p>
+<p align="left">VSCode ext:</p>
+<p align="left">
+<img src="https://img.shields.io/badge/THEMES- 251-95ED27?style=flat">
+<img src="https://img.shields.io/badge/SIDEBARS- 160+-95ED27?style=flat">
+<img src="https://img.shields.io/badge/PRODUCT ICONS- 651-95ED27?style=flat">
+<img src="https://img.shields.io/badge/FILE ICONS- 454-95ED27?style=flat">
+<img src="https://img.shields.io/badge/VSCode Extentions- 82+-95ED27?style=flat">
+<img src="https://img.shields.io/badge/FEATURES- SHIT TONNE-95ED27?style=flat">
+</p>
+<p align="left">Small but powerful repos worth checking out:</p>
+<p align="left">
+
+- [![🧙 Alias Types](https://img.shields.io/badge/Alias%20Types-000000.svg?style=flat&logo=typescript&logoColor=white)](https://github.com/the-w1zard/alias_types) <a href="https://www.npmjs.com/package/@the-w1zard/alias_types"><img src="./icons/npm.png" alt="alias_types" width="20" height="20"></a>
+- [![🧙 The Cloud](https://img.shields.io/badge/%F0%9F%A7%99%20DX-95ED27.svg?style=flat)](https://github.com/the-w1zard/dx) <a href="https://www.npmjs.com/package/@the-w1zard/dx"><img src="./icons/npm.png" alt="dx" width="20" height="20"></a>
+- [![🧙 The Cloud](https://img.shields.io/badge/%F0%9F%A7%99%20Temporal%20Shift-77AA99.svg?style=flat)](https://github.com/the-w1zard/temporal_shift) <a href="https://www.npmjs.com/package/@the-w1zard/temporal_shift"><img src="./icons/npm.png" alt="temporal_shift" width="20" height="20"></a>
+- [![🧙 The Cloud](https://img.shields.io/badge/%F0%9F%A7%99%20The%20Cloud-02303A.svg?style=flat)](https://github.com/the-w1zard/the_cloud)  <a href="https://www.npmjs.com/package/@the-w1zard/the-cloud"><img src="./icons/npm.png" alt="app_store" width="20" height="20"></a>
+- [![🧙 SINGULARITY](https://img.shields.io/badge/%F0%9F%A7%99%20SINGULARITY-02303A.svg?style=flat)](https://github.com/the-w1zard)  
+- [![🧙 Sometimes,%20my%20genius...%20It%20generates%20gravity.](https://img.shields.io/badge/%F0%9F%A7%99%20Sometimes,%20my%20genius...%20It%20generates%20gravity.-4285F4.svg?style=flat)](https://github.com/the-w1zard)  
+- [![🧙 The Wizard](https://img.shields.io/badge/%F0%9F%A7%99%20Coming%20Soon:%20The%20Wizard%20Ed.-7F52FF.svg?style=flat)](https://github.com/the-w1zard)  
+- [![🧙 Hadron Particle Disruptor](https://img.shields.io/badge/%F0%9F%A7%99%20Coming%20Soon:%20Hadron%20Particle%20Disruptor-23ED8B00.svg?style=flat)](https://github.com/the-w1zard)  
+</p>
+<p align="left">The goal? To remove all friction, from everything.</p>
+
+> [!NOTE] 
+>
+> This seriously should be 75+ modules, but seriously, fuck that. Just imagine the amount of time that would take. Everything found in this module, does not have a single dep or requirement. Which was the filter for when a solution could be added to this. 
+>
+> That is why this looks so large, and seems to be breaking separation of concerns... It isn't, when the concern is, does this solution depend on or require anything outside of itself? No, then add it.
+</div>
+
 ## CN UTILS
 
 <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[Class Utilities]</span> </strong></summary>
@@ -757,6 +803,413 @@ formatDate(date);
 
 <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[AW_SET]</span> </strong></summary>
 
+# `AWSet`
+
+A production-grade Add-Wins Set CRDT implementing Observed-Remove Set (OR-Set) semantics. Each addition receives a unique replica-scoped tag, while removals tombstone the add tags observed locally. Replicas merge full states or deltas to synchronize their sets.
+
+## Exported Types
+
+### `Json`
+
+```ts
+export type Json =
+    | null
+    | boolean
+    | number
+    | string
+    | Json[]
+    | { [key: string]: Json };
+```
+
+JSON-compatible value type used by the default serializer.
+
+### `ElementKey`
+
+```ts
+export type ElementKey = string;
+```
+
+Stable serialized key identifying an element.
+
+### `Tag`
+
+```ts
+export interface Tag {
+    readonly replica: string;
+    readonly counter: number;
+}
+```
+
+| Property | Description |
+|---|---|
+| `replica` | Stable replica identifier, unique across the deployment. |
+| `counter` | Monotonic per-replica counter. |
+
+Tags identify individual additions, allowing concurrent additions of the same element to remain distinguishable.
+
+### `AWSetState<T>`
+
+```ts
+export interface AWSetState<T = any> {
+    adds: Record<ElementKey, Tag[]>;
+    removes: Record<ElementKey, Tag[]>;
+}
+```
+
+Complete serialized CRDT state.
+
+| Property | Description |
+|---|---|
+| `adds` | Stable serialized element keys mapped to add tags. |
+| `removes` | Stable serialized element keys mapped to tombstoned tags. |
+
+### `AWSetDelta<T>`
+
+```ts
+export interface AWSetDelta<T> {
+    adds: Record<ElementKey, Tag[]>;
+    removes: Record<ElementKey, Tag[]>;
+}
+```
+
+Incremental state containing add and removal tags absent from a supplied previous state.
+
+### `AWSetOptions<T>`
+
+```ts
+export interface AWSetOptions<T = any> {
+    replicaId: string;
+    serialize?: (value: T) => Json;
+    deserialize?: (key: ElementKey) => T;
+}
+```
+
+| Option | Description |
+|---|---|
+| `replicaId` | Required stable replica identifier. Must not be reused after a reset. |
+| `serialize` | Optional deterministic serializer. Required for non-JSON-safe elements. |
+| `deserialize` | Optional deserializer used by `values()` and `entries()`. |
+
+Custom serializers must produce identical keys for structurally equal elements.
+
+## Class: `AWSet<T>`
+
+```ts
+export class AWSet<T>
+```
+
+### Internal State
+
+| Field | Description |
+|---|---|
+| `replicaId` | Stable identifier for this replica. |
+| `serialize` | Element serialization function. |
+| `deserialize` | Optional element deserialization function. |
+| `counter` | Local monotonic add-tag counter, initialized to `0`. |
+| `adds` | Element-to-add-tag record. |
+| `removes` | Element-to-tombstone record. |
+
+The `adds` and `removes` records use null-prototype objects.
+
+## Constructor
+
+```ts
+constructor(options: AWSetOptions)
+```
+
+Creates a replica using the supplied options.
+
+Throws `TypeError` if `replicaId` is missing, empty, or not a string.
+
+When no custom serializer is provided, the default serializer accepts:
+
+- `null`
+- Strings
+- Numbers
+- Booleans
+- Arrays
+- Plain objects
+
+Object keys are sorted recursively to produce canonical serialization. Unsupported values require a custom `serialize` option.
+
+## Core Operations
+
+### `add(value)`
+
+```ts
+add(value: T): Tag
+```
+
+Adds an element and returns its newly created tag.
+
+Each addition generates:
+
+```ts
+{
+    replica: this.replicaId,
+    counter: ++this.counter
+}
+```
+
+The tag is appended to the element's add-tag list.
+
+Adding an element that already exists creates another distinct tag.
+
+### `remove(value)`
+
+```ts
+remove(value: T): number
+```
+
+Tombstones every locally observed add tag for the element.
+
+Returns the number of newly tombstoned tags.
+
+- Returns `0` when no live add tags are observed.
+- Existing tombstones are not duplicated.
+- The element's add record is deleted after its observed tags are tombstoned.
+
+An addition made concurrently on another replica remains effective if its tag was not observed by this removal.
+
+### `has(value)`
+
+```ts
+has(value: T): boolean
+```
+
+Returns whether the element has at least one live add tag.
+
+### `size()`
+
+```ts
+size(): number
+```
+
+Returns the number of currently live serialized element keys.
+
+### `values()`
+
+```ts
+values(): T[]
+```
+
+Returns the current effective elements.
+
+Uses the configured `deserialize` function when provided; otherwise parses each serialized key as JSON.
+
+### `keys()`
+
+```ts
+keys(): ElementKey[]
+```
+
+Returns serialized keys with at least one live add tag.
+
+### `entries()`
+
+```ts
+entries(): [ElementKey, T][]
+```
+
+Returns serialized element keys paired with their deserialized values.
+
+## State Synchronization
+
+### `merge(state)`
+
+```ts
+merge(state: AWSetState<T>): void
+```
+
+Merges another replica's complete state into the current replica.
+
+- Unions add-tag lists.
+- Unions tombstone lists.
+- Deduplicates tags.
+- Sorts tags deterministically.
+- Calls `prune()` after merging.
+
+Throws `TypeError` if the supplied state is not an object.
+
+The merge operation is idempotent and commutative; the CRDT's set merge semantics are also associative.
+
+### `mergeDelta(delta)`
+
+```ts
+mergeDelta(delta: AWSetDelta<T>): void
+```
+
+Merges an incremental delta by delegating to `merge()`.
+
+Repeated application of the same delta is safe because tags are deduplicated.
+
+### `getState()`
+
+```ts
+getState(): AWSetState<T>
+```
+
+Returns a deep copy of the complete CRDT state.
+
+Both records and their tag objects are copied, so modifying the returned state does not directly modify the replica's internal records.
+
+### `getDelta(since?)`
+
+```ts
+getDelta(since?: AWSetState<T>): AWSetDelta<T>
+```
+
+Returns add and removal tags that are absent from the supplied previous state.
+
+When `since` is omitted, returns the current add and removal records as a delta.
+
+The returned delta contains only missing tags and can be applied repeatedly.
+
+## Compaction
+
+### `prune()`
+
+```ts
+prune(): void
+```
+
+Removes add tags that have matching tombstones.
+
+For each element:
+
+1. Reads its current add tags.
+2. Reads its tombstoned tags.
+3. Filters out matching add tags.
+4. Deletes the add record if no live tags remain.
+5. Retains any remaining live tags.
+
+Pruning does not remove tombstones. It reduces retained add-state while preserving the observable set.
+
+## Internal Serialization and Tag Helpers
+
+| Helper | Purpose |
+|---|---|
+| `isPlainObject(value)` | Checks for non-null, non-array objects. |
+| `canonicalize(value)` | Recursively sorts object keys while preserving array order. |
+| `defaultSerialize(value)` | Serializes supported JSON-compatible values. |
+| `stableStringify(value)` | Produces a canonical serialized element key. |
+| `compareTags(a, b)` | Orders tags by replica identifier, then counter. |
+| `dedupeTags(tags)` | Sorts and removes duplicate tags. |
+| `mergeTagLists(a, b)` | Combines and deduplicates two tag lists. |
+| `mergeRecordTags(target, source)` | Merges tag records and reports whether a record changed. |
+
+## CRDT Semantics
+
+The implementation follows Add-Wins Set behavior:
+
+| Situation | Result |
+|---|---|
+| An element is added | A unique add tag is created. |
+| An element is removed | All locally observed add tags are tombstoned. |
+| Add and remove happen concurrently | The unseen concurrent add remains live. |
+| An observed add is subsequently removed | Its matching tag remains tombstoned. |
+| Replicas merge the same state repeatedly | Duplicate tags are eliminated. |
+| Replicas merge in different orders | The merged tag sets converge. |
+
+### Example: Basic Usage
+
+```ts
+const set = new AWSet<string>({
+    replicaId: "replica-a"
+});
+
+set.add("Alice");
+set.add("Bob");
+
+set.has("Alice"); // true
+set.size();       // 2
+
+set.remove("Alice");
+
+set.has("Alice"); // false
+set.values();     // ["Bob"]
+```
+
+### Example: Replica Synchronization
+
+```ts
+const a = new AWSet<string>({
+    replicaId: "replica-a"
+});
+
+const b = new AWSet<string>({
+    replicaId: "replica-b"
+});
+
+a.add("Alice");
+
+b.merge(a.getState());
+
+b.add("Bob");
+
+a.merge(b.getState());
+```
+
+Both replicas converge after exchanging their states.
+
+### Example: Delta Synchronization
+
+```ts
+const previous = a.getState();
+
+a.add("Charlie");
+
+const delta = a.getDelta(previous);
+
+b.mergeDelta(delta);
+```
+
+Only tags absent from the supplied previous state are included in the delta.
+
+### Example: Structural Object Elements
+
+```ts
+interface User {
+    id: number;
+    name: string;
+}
+
+const users = new AWSet<User>({
+    replicaId: "replica-a"
+});
+
+users.add({ id: 1, name: "Alice" });
+
+users.has({ name: "Alice", id: 1 }); // true
+```
+
+The default canonical serializer sorts object keys, so structurally equivalent JSON objects produce the same element key.
+
+### Example: Custom Serialization
+
+```ts
+const dates = new AWSet<Date>({
+    replicaId: "replica-a",
+    serialize: value => value.toISOString(),
+    deserialize: key => new Date(JSON.parse(key))
+});
+```
+
+Custom serializers are used for values that are not supported by the default JSON serializer.
+
+## Synchronization Notes
+
+- Each replica must use a stable, unique `replicaId`.
+- A replica identifier must not be reused after resetting its counter.
+- Add tags are unique through the combination of replica ID and local counter.
+- Tombstones preserve observed removals across state exchanges.
+- `getDelta()` supports incremental synchronization against a previously known state.
+- `prune()` removes matched add records but retains tombstones.
+
+</details>
+
+<details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[AW_SET BINARY]</span> </strong></summary>
+
 A binary-backed, add/remove set with delta synchronization, per-node sequence tracking, peer digests, and tombstone compaction.
 
 ## API
@@ -902,6 +1355,525 @@ Element and node names are maintained in separate hash-to-name maps. Synchroniza
 </details>
 
 <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[CASUAL_CURSOR]</span> </strong></summary>
+
+# `CausalCursorCRDT`
+
+A state-based causal cursor CRDT for collaborative documents. Maintains one cursor per participant, using stable document anchors rather than integer offsets. Cursor updates carry Hybrid Logical Clock (HLC) timestamps, allowing replicas to resolve competing updates deterministically and synchronize cursor state through full-state or delta merges.
+
+## Exported Types
+
+### `ReplicaId`, `ParticipantId`, `AnchorId`
+
+```ts
+export type ReplicaId = string;
+export type ParticipantId = string;
+export type AnchorId = string;
+```
+
+Identifiers for replicas, participants, and stable document positions.
+
+### `AnchorSide`
+
+```ts
+export type AnchorSide = 'before' | 'after';
+```
+
+Specifies which side of an anchored document item contains the cursor.
+
+### `CursorAnchor`
+
+```ts
+export interface CursorAnchor {
+    readonly id: AnchorId;
+    readonly side: AnchorSide;
+}
+```
+
+Represents a stable cursor position relative to an existing CRDT item, paragraph, block, or document boundary.
+
+### `CursorState`
+
+```ts
+export interface CursorState {
+    readonly participantId: ParticipantId;
+    readonly anchor: CursorAnchor;
+    readonly selectionAnchor?: CursorAnchor;
+    readonly color?: string;
+    readonly name?: string;
+    readonly hlc: string;
+    readonly replicaId: ReplicaId;
+}
+```
+
+| Property | Description |
+|---|---|
+| `participantId` | Participant owning the cursor. |
+| `anchor` | Primary cursor position. |
+| `selectionAnchor` | Optional selection endpoint; omitted for caret-only cursors. |
+| `color` | Optional participant cursor color. |
+| `name` | Optional participant display name. |
+| `hlc` | Encoded Hybrid Logical Clock timestamp. |
+| `replicaId` | Replica that generated the update. |
+
+### `CausalContext`
+
+```ts
+export type CausalContext = Record<ReplicaId, string>;
+```
+
+Maps each observed replica to its latest known HLC timestamp.
+
+### `CursorCRDTState`
+
+```ts
+export interface CursorCRDTState {
+    cursors: Record<ParticipantId, CursorState>;
+    context: CausalContext;
+}
+```
+
+Complete state containing participant cursors and causal context.
+
+### `CursorCRDTDelta`
+
+```ts
+export interface CursorCRDTDelta {
+    cursors: Record<ParticipantId, CursorState>;
+    context: CausalContext;
+}
+```
+
+Incremental synchronization representation containing changed cursors and causal context.
+
+### `HLC`
+
+```ts
+export interface HLC {
+    readonly physical: number;
+    readonly logical: number;
+    readonly replicaId: ReplicaId;
+}
+```
+
+Internal representation used when encoding and decoding timestamps.
+
+### `CausalCursorOptions`
+
+```ts
+export interface CausalCursorOptions {
+    replicaId: ReplicaId;
+    presenceTtlMs?: number;
+    now?: () => number;
+}
+```
+
+| Option | Description |
+|---|---|
+| `replicaId` | Required stable, globally unique replica identifier. |
+| `presenceTtlMs` | Maximum inactivity period before a cursor becomes eligible for garbage collection. Defaults to `120_000` milliseconds. |
+| `now` | Optional clock source, useful for deterministic tests. Defaults to `Date.now`. |
+
+## Exported HLC and Causal Helpers
+
+### `compareHlc(a, b)`
+
+```ts
+export function compareHlc(a: string, b: string): number
+```
+
+Compares two encoded HLC timestamps.
+
+- Negative: `a` precedes `b`.
+- Zero: timestamps are identical.
+- Positive: `a` follows `b`.
+
+Comparison order:
+
+1. Physical timestamp.
+2. Logical counter.
+3. Replica identifier.
+
+### `mergeContext(a, b)`
+
+```ts
+export function mergeContext(
+    a: CausalContext = {},
+    b: CausalContext = {}
+): CausalContext
+```
+
+Merges two causal contexts using the pointwise maximum HLC for each replica.
+
+Returns a new context without modifying the supplied records.
+
+### `isCausallyNewer(candidate, context)`
+
+```ts
+export function isCausallyNewer(
+    candidate: string,
+    context: CausalContext
+): boolean
+```
+
+Checks whether the candidate HLC is newer than the context entry associated with its encoded replica identifier.
+
+Returns `true` when no corresponding observation exists or when the candidate compares greater than the observed timestamp.
+
+## HLC Encoding
+
+The internal HLC wire representation is:
+
+```text
+physical:logical:replicaId
+```
+
+Both numeric components use base-36 encoding with fixed-width padding:
+
+| Component | Encoding width |
+|---|---:|
+| Physical timestamp | 11 characters |
+| Logical counter | 6 characters |
+| Replica identifier | Variable |
+
+The helper functions are:
+
+- `encodeHlc(hlc)` — encodes an HLC into a string.
+- `decodeHlc(encoded)` — parses the encoded timestamp into physical, logical, and replica components.
+
+## Class: `CausalCursorCRDT`
+
+```ts
+export class CausalCursorCRDT
+```
+
+### Internal State
+
+| Field | Description |
+|---|---|
+| `replicaId` | Local replica identifier. |
+| `presenceTtlMs` | Cursor inactivity threshold. |
+| `now` | Configurable clock source. |
+| `physical` | Local physical HLC component. |
+| `logical` | Local logical HLC component. |
+| `cursors` | Participant ID to current cursor state. |
+| `context` | Latest observed HLC per replica. |
+
+Cursor and context records use null-prototype objects.
+
+## Constructor
+
+```ts
+constructor(options: CausalCursorOptions)
+```
+
+Initializes the replica, clock source, and presence TTL.
+
+Throws `TypeError` when `replicaId` is not a non-empty string.
+
+Defaults:
+
+```ts
+presenceTtlMs = 120_000;
+now = Date.now;
+physical = 0;
+logical = 0;
+```
+
+## Cursor Operations
+
+### `setCursor(input)`
+
+```ts
+setCursor(input: {
+    participantId: ParticipantId;
+    anchor: CursorAnchor;
+    selectionAnchor?: CursorAnchor;
+    color?: string;
+    name?: string;
+}): CursorCRDTDelta
+```
+
+Creates or updates a participant cursor and returns a delta suitable for immediate broadcasting.
+
+Processing:
+
+1. Validates the participant identifier.
+2. Validates the primary anchor identifier and side.
+3. Validates the optional selection anchor.
+4. Generates a new local HLC.
+5. Creates the cursor state.
+6. Stores the cursor under its participant ID.
+7. Updates the local causal context.
+8. Returns a delta containing the updated cursor and local HLC context.
+
+Valid anchor sides are `"before"` and `"after"`.
+
+### `clearCursor(participantId)`
+
+```ts
+clearCursor(participantId: ParticipantId): CursorCRDTDelta
+```
+
+Deletes the participant cursor from the local cursor record and returns a removal delta.
+
+Generates and observes a new HLC.
+
+The returned delta contains an empty cursor record and the updated local causal context.
+
+### `has(participantId)`
+
+```ts
+has(participantId: ParticipantId): boolean
+```
+
+Checks whether a participant currently has a cursor entry.
+
+### `get(participantId)`
+
+```ts
+get(participantId: ParticipantId): CursorState | undefined
+```
+
+Returns a cloned cursor state or `undefined` when the participant is absent.
+
+### `values()`
+
+```ts
+values(): CursorState[]
+```
+
+Returns cloned cursor states for all currently stored participants.
+
+### `getState()`
+
+```ts
+getState(): CursorCRDTState
+```
+
+Returns a deep copy of the complete cursor and causal-context state.
+
+Cursor anchors and optional selection anchors are copied independently.
+
+## State Synchronization
+
+### `merge(state)`
+
+```ts
+merge(state: CursorCRDTState): void
+```
+
+Merges a remote full state into the local replica.
+
+Processing:
+
+1. Validates that the supplied state is an object.
+2. Merges causal contexts using `mergeContext`.
+3. Iterates over remote participant cursors.
+4. Replaces a local cursor when the remote cursor wins the comparison.
+5. Runs inactive cursor collection.
+
+Cursor replacement rules:
+
+- A remote cursor with a greater HLC replaces the local cursor.
+- A remote cursor with a lower HLC is ignored.
+- When HLC timestamps tie, the lexicographically greater replica ID wins.
+
+### `mergeDelta(delta)`
+
+```ts
+mergeDelta(delta: CursorCRDTDelta): void
+```
+
+Merges an incremental update by delegating to `merge()`.
+
+Supports repeated and out-of-order delta application.
+
+### `getDelta(since?)`
+
+```ts
+getDelta(since?: CursorCRDTState): CursorCRDTDelta
+```
+
+Returns cursors whose HLC timestamps differ from the corresponding entries in the supplied previous state.
+
+When `since` is omitted, all currently stored cursors are included.
+
+The returned delta includes the current causal context.
+
+## Presence and Garbage Collection
+
+### `collectInactive()`
+
+```ts
+collectInactive(): number
+```
+
+Removes cursors whose physical HLC timestamp is older than the configured presence TTL.
+
+The cutoff is calculated as:
+
+```ts
+const cutoff = this.now() - this.presenceTtlMs;
+```
+
+Each cursor's physical timestamp is decoded from its HLC.
+
+Returns the number of removed participant cursors.
+
+Garbage collection is eventual rather than correctness-critical. A disconnected participant can be reintroduced by a later cursor update.
+
+## Internal HLC Operations
+
+### `nextHlc()`
+
+Generates the next local HLC.
+
+- If the current physical time exceeds the stored physical timestamp, updates the physical component and resets the logical counter.
+- Otherwise, increments the logical counter.
+- Encodes the result with the local replica ID.
+
+### `observe(hlc)`
+
+Updates the causal context and local HLC clock after observing a timestamp.
+
+- Updates the corresponding replica's context entry when the timestamp is newer.
+- Advances the physical component when the observed physical timestamp is greater.
+- Advances the logical component when physical timestamps match and the observed logical counter is greater.
+
+### `shouldReplace(local, remote)`
+
+Determines whether a remote cursor should replace a local cursor.
+
+Uses `compareHlc()` first, then the replica ID as a deterministic tie-breaker.
+
+### `createDelta(partial)`
+
+Creates a `CursorCRDTDelta` from the supplied cursor and context records.
+
+## Internal Copy Helpers
+
+| Helper | Purpose |
+|---|---|
+| `assertNonEmptyString(value, name)` | Validates non-empty string identifiers. |
+| `encodeHlc(hlc)` | Encodes an HLC timestamp. |
+| `decodeHlc(encoded)` | Decodes an HLC timestamp. |
+| `cloneCursor(cursor)` | Copies cursor state and anchor objects. |
+| `cloneState(state)` | Copies all cursors and causal context. |
+
+## Usage
+
+### Creating a Replica
+
+```ts
+const cursors = new CausalCursorCRDT({
+    replicaId: "replica-a"
+});
+```
+
+### Publishing a Cursor
+
+```ts
+const delta = cursors.setCursor({
+    participantId: "user-1",
+    anchor: {
+        id: "paragraph-42",
+        side: "after"
+    },
+    color: "#4488ff",
+    name: "Alice"
+});
+
+broadcast(delta);
+```
+
+### Publishing a Selection
+
+```ts
+const delta = cursors.setCursor({
+    participantId: "user-1",
+    anchor: {
+        id: "paragraph-42",
+        side: "before"
+    },
+    selectionAnchor: {
+        id: "paragraph-48",
+        side: "after"
+    }
+});
+
+broadcast(delta);
+```
+
+### Receiving Remote Updates
+
+```ts
+const remoteDelta: CursorCRDTDelta = receiveUpdate();
+
+cursors.mergeDelta(remoteDelta);
+```
+
+### Reading Participant Cursors
+
+```ts
+const cursor = cursors.get("user-1");
+
+const allCursors = cursors.values();
+```
+
+### Full-State Synchronization
+
+```ts
+const state = cursors.getState();
+
+remoteReplica.merge(state);
+```
+
+### Incremental Synchronization
+
+```ts
+const previous = cursors.getState();
+
+// Subsequent cursor updates...
+
+const delta = cursors.getDelta(previous);
+
+remoteReplica.mergeDelta(delta);
+```
+
+### Removing a Cursor
+
+```ts
+const delta = cursors.clearCursor("user-1");
+
+broadcast(delta);
+```
+
+### Inactive Cursor Collection
+
+```ts
+const removed = cursors.collectInactive();
+```
+
+## CRDT Behavior
+
+| Property | Behavior |
+|---|---|
+| Cursor identity | One current cursor per participant. |
+| Position representation | Stable document anchors rather than integer offsets. |
+| Update ordering | Hybrid Logical Clock timestamps. |
+| Equal timestamp resolution | Lexicographically greater replica ID wins. |
+| Context merging | Pointwise maximum HLC per replica. |
+| Full synchronization | `getState()` and `merge()`. |
+| Incremental synchronization | `getDelta()` and `mergeDelta()`. |
+| Idempotency | Repeated state or delta application does not change the result after convergence. |
+| Garbage collection | Configurable inactivity TTL. |
+
+
+
+
+</details>
+
+<details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[CASUAL_CURSOR_BINARY]</span> </strong></summary>
 
 A binary causal cursor that encapsulates an origin node hash, local log sequence, and causal version-vector frontier in a compact binary token.
 
@@ -1087,8 +2059,388 @@ The generated packet contains an 8-byte header followed by the slot data.
 | `8` | Variable | Slot Data | Contiguous 24-byte records. |
 
 </details>
-
 <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[G_SET]</span> </strong></summary>
+
+# `GSet`
+
+A production-grade Grow-Only Set (G-Set) CRDT. Elements can be added but never removed. Element identity is determined by stable canonical serialization, allowing replicas to synchronize through complete states or incremental deltas.
+
+## Exported Types
+
+### `Json`
+
+```ts
+export type Json =
+    | null
+    | boolean
+    | number
+    | string
+    | Json[]
+    | { [key: string]: Json };
+```
+
+Recursive JSON-compatible value type.
+
+### `ElementKey`
+
+```ts
+export type ElementKey = string;
+```
+
+Canonical serialized identity of an element.
+
+### `GSetState`
+
+```ts
+export interface GSetState {
+    elements: ElementKey[];
+}
+```
+
+Complete set state containing the canonical keys of all elements.
+
+### `GSetDelta`
+
+```ts
+export interface GSetDelta {
+    elements: ElementKey[];
+}
+```
+
+Incremental state containing canonical keys to union into another replica.
+
+### `GSetOptions`
+
+```ts
+export interface GSetOptions {
+    serialize?: (value: unknown) => Json;
+    deserialize?: (key: ElementKey) => unknown;
+}
+```
+
+| Option | Description |
+|---|---|
+| `serialize` | Custom serializer for elements, particularly non-JSON-safe values. |
+| `deserialize` | Optional inverse serializer used by `values()` and `entries()`. |
+
+For structurally equal objects to have identical membership, custom serializers must produce equivalent JSON representations.
+
+## Class: `GSet`
+
+```ts
+export class GSet<T = unknown>
+```
+
+Maintains a local `Set<ElementKey>` containing canonical element identities.
+
+### Constructor
+
+```ts
+constructor(options: GSetOptions = {})
+```
+
+Initializes the element set and serialization functions.
+
+Defaults to `defaultSerialize`, which supports:
+
+- `null`
+- Strings
+- Numbers
+- Booleans
+- Arrays
+- Plain objects
+
+Non-JSON-safe values require a custom `serialize` function.
+
+## Element Operations
+
+### `add(value)`
+
+```ts
+add(value: T): boolean
+```
+
+Adds an element using its canonical serialized identity.
+
+- Returns `true` when newly added.
+- Returns `false` when already present.
+
+Repeated additions are idempotent.
+
+### `addAll(values)`
+
+```ts
+addAll(values: Iterable<T>): number
+```
+
+Adds every element in the iterable.
+
+Returns the number of elements newly added.
+
+### `has(value)`
+
+```ts
+has(value: T): boolean
+```
+
+Checks membership using the element's canonical serialized identity.
+
+### `hasKey(key)`
+
+```ts
+hasKey(key: ElementKey): boolean
+```
+
+Checks membership directly using a canonical element key.
+
+### `size()`
+
+```ts
+size(): number
+```
+
+Returns the number of unique elements.
+
+### `clear()`
+
+```ts
+clear(): void
+```
+
+Clears the local in-memory representation.
+
+## Reading Elements
+
+### `keys()`
+
+```ts
+keys(): ElementKey[]
+```
+
+Returns all canonical element keys.
+
+### `values()`
+
+```ts
+values(): T[]
+```
+
+Returns deserialized elements.
+
+Uses the configured `deserialize` function when available; otherwise parses each canonical key with `JSON.parse`.
+
+### `entries()`
+
+```ts
+entries(): [ElementKey, T][]
+```
+
+Returns canonical key/value pairs.
+
+## State Synchronization
+
+### `merge(state)`
+
+```ts
+merge(state: GSetState): void
+```
+
+Merges another complete G-Set state using set union.
+
+Validates that `state.elements` is an array and that every element is a string.
+
+Duplicate keys are ignored.
+
+### `mergeDelta(delta)`
+
+```ts
+mergeDelta(delta: GSetDelta | Array<GSetDelta>): void
+```
+
+Merges one or multiple deltas.
+
+Supports empty deltas, repeated delivery, and out-of-order delivery.
+
+### `getState()`
+
+```ts
+getState(): GSetState
+```
+
+Returns the complete state for persistence or initial replica synchronization.
+
+### `getDelta(since?)`
+
+```ts
+getDelta(since?: GSetState): GSetDelta
+```
+
+Returns canonical keys not present in the supplied previous state.
+
+When `since` is omitted, all current elements are included.
+
+## Set Operations
+
+### `union(other)`
+
+```ts
+union(other: GSet<T>): GSet<T>
+```
+
+Creates a new G-Set containing the union of both sets.
+
+- Neither input is modified.
+- The resulting set reuses the current set's serializer and deserializer.
+
+### `difference(other)`
+
+```ts
+difference(other: GSet<T>): ElementKey[]
+```
+
+Returns canonical keys present in the current set but absent from `other`.
+
+Does not modify either set.
+
+### `intersection(other)`
+
+```ts
+intersection(other: GSet<T>): ElementKey[]
+```
+
+Returns canonical keys present in both sets.
+
+Does not modify either set.
+
+## Canonical Serialization
+
+Internal serialization helpers provide stable element identity.
+
+| Helper | Purpose |
+|---|---|
+| `isPlainObject(value)` | Checks whether a value is a non-null object that is not an array. |
+| `canonicalize(value)` | Recursively canonicalizes arrays and sorts object keys. |
+| `defaultSerialize(value)` | Handles JSON-compatible primitives, arrays, and plain objects. |
+| `stableStringify(value)` | Produces the canonical JSON string used as the element key. |
+
+Object keys are sorted recursively before stringification, so structurally equivalent JSON objects with different property insertion orders produce the same element identity.
+
+A custom serializer is required for values outside the supported JSON-compatible types.
+
+## Usage
+
+### Basic Set
+
+```ts
+const set = new GSet<string>();
+
+set.add('alpha');
+set.add('beta');
+
+set.add('alpha'); // false
+
+set.has('alpha'); // true
+set.size();       // 2
+```
+
+### Adding Multiple Elements
+
+```ts
+const set = new GSet<number>();
+
+const added = set.addAll([1, 2, 3, 2]);
+
+// added: 3
+```
+
+### Object Identity
+
+```ts
+const set = new GSet<{ id: number; name: string }>();
+
+set.add({ id: 1, name: 'Alice' });
+
+set.has({ name: 'Alice', id: 1 }); // true
+```
+
+Canonical serialization makes property insertion order irrelevant.
+
+### Custom Serialization
+
+```ts
+const set = new GSet<Date>({
+    serialize: value => value.toISOString(),
+    deserialize: key => new Date(JSON.parse(key)),
+});
+```
+
+### Delta Synchronization
+
+```ts
+const alice = new GSet<string>();
+const bob = new GSet<string>();
+
+const delta = alice.addAll(['alpha', 'beta']);
+
+const update = alice.getDelta();
+
+bob.mergeDelta(update);
+```
+
+### Full-State Synchronization
+
+```ts
+const state = alice.getState();
+
+bob.merge(state);
+```
+
+### Incremental Synchronization
+
+```ts
+const previous = alice.getState();
+
+// Subsequent additions...
+
+const delta = alice.getDelta(previous);
+
+bob.mergeDelta(delta);
+```
+
+### Set Operations
+
+```ts
+const first = new GSet<number>();
+const second = new GSet<number>();
+
+first.addAll([1, 2, 3]);
+second.addAll([2, 3, 4]);
+
+const combined = first.union(second);
+
+const onlyFirst = first.difference(second);
+const shared = first.intersection(second);
+```
+
+## CRDT Invariants
+
+| Property | Behavior |
+|---|---|
+| Growth | Elements can only be added. |
+| Removal | Not supported. |
+| Element identity | Stable canonical serialization. |
+| Addition | Idempotent. |
+| Merge | Set union. |
+| Commutativity | Merge order does not affect the result. |
+| Associativity | Grouping merges does not affect the result. |
+| Idempotency | Repeated merges do not duplicate elements. |
+| Delta delivery | Safe for duplicate and out-of-order delivery. |
+
+The G-Set is monotonic: once an element is added to a replica, synchronization can propagate it to other replicas, and no merge operation removes it.
+
+</details>
+
+<details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[G_SET_BINARY]</span> </strong></summary>
 
 A high-performance binary Grow-Only Set (G-Set) CRDT backed by a contiguous `ArrayBuffer` slab. Maintains elements in ascending hash order, using binary search for lookups and sorted insertion for set operations.
 
@@ -1190,6 +2542,443 @@ The generated packet contains a 4-byte header followed by the complete record da
 </details>
 
 <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[VERSION_VECTOR]</span> </strong></summary>
+
+# `VersionVectorCRDT`
+
+A production-grade Version Vector CRDT for tracking causal histories across distributed replicas.
+
+Each replica maintains a monotonically increasing counter for its own events while retaining the highest observed counters from other replicas. Version vectors support causal ordering, concurrency detection, state merging, and incremental synchronization.
+
+## Exported Types
+
+### `ReplicaId`
+
+```ts
+export type ReplicaId = string;
+```
+
+Unique identifier for a replica.
+
+### `VersionVectorState`
+
+```ts
+export type VersionVectorState = Record<ReplicaId, number>;
+```
+
+Maps each replica ID to its latest observed event counter.
+
+### `VersionVectorDelta`
+
+```ts
+export type VersionVectorDelta = Partial<VersionVectorState>;
+```
+
+Partial version vector containing only updated replica components.
+
+### `CausalRelation`
+
+```ts
+export type CausalRelation =
+    | 'equal'
+    | 'before'
+    | 'after'
+    | 'concurrent';
+```
+
+Describes the causal relationship between two version vectors.
+
+| Relation | Meaning |
+|---|---|
+| `equal` | Both vectors represent identical causal histories. |
+| `before` | The first vector is an ancestor of the second. |
+| `after` | The first vector dominates the second. |
+| `concurrent` | Neither vector dominates the other. |
+
+### `VersionVectorOptions`
+
+```ts
+export interface VersionVectorOptions {
+    replicaId: ReplicaId;
+}
+```
+
+Requires a stable, globally unique replica ID. The identifier must never be reused after restoring from a backup.
+
+## Exported Helper Functions
+
+### `cloneVersionVector(state)`
+
+```ts
+export function cloneVersionVector(
+    state: VersionVectorState = {}
+): VersionVectorState
+```
+
+Creates a defensive copy of a version vector.
+
+Validates every counter as a non-negative safe integer.
+
+Returns a null-prototype object.
+
+### `mergeVersionVectors(a, b)`
+
+```ts
+export function mergeVersionVectors(
+    a: VersionVectorState = {},
+    b: VersionVectorState = {}
+): VersionVectorState
+```
+
+Merges two version vectors using component-wise maximum.
+
+For each replica:
+
+\[
+V_{\text{result}}[r] = \max(V_a[r], V_b[r])
+\]
+
+Missing components are treated as zero.
+
+Neither input is modified.
+
+### `compareVersionVectors(a, b)`
+
+```ts
+export function compareVersionVectors(
+    a: VersionVectorState = {},
+    b: VersionVectorState = {}
+): CausalRelation
+```
+
+Determines the causal relationship between two vectors.
+
+- `equal`: Neither vector contains a greater component.
+- `before`: The first vector has lower components and is dominated by the second.
+- `after`: The first vector dominates the second.
+- `concurrent`: Each vector contains at least one component greater than the corresponding component in the other.
+
+### `dominates(a, b)`
+
+```ts
+export function dominates(
+    a: VersionVectorState,
+    b: VersionVectorState
+): boolean
+```
+
+Returns `true` when `a` contains every update represented by `b`.
+
+Formally:
+
+\[
+\forall r,\quad a[r] \geq b[r]
+\]
+
+Missing components are treated as zero.
+
+### `diffVersionVectors(current, since)`
+
+```ts
+export function diffVersionVectors(
+    current: VersionVectorState = {},
+    since: VersionVectorState = {}
+): VersionVectorDelta
+```
+
+Returns only components in `current` that are newer than their corresponding components in `since`.
+
+The result is a compact version-vector delta.
+
+## Class: `VersionVectorCRDT`
+
+```ts
+export class VersionVectorCRDT
+```
+
+Maintains a local replica's causal history.
+
+### Internal State
+
+| Field | Description |
+|---|---|
+| `replicaId` | Local replica identifier. |
+| `counters` | Current version vector containing observed replica counters. |
+
+### Constructor
+
+```ts
+constructor(options: VersionVectorOptions)
+```
+
+Validates the replica ID and initializes an empty version vector.
+
+Throws `TypeError` when the replica ID is not a non-empty string.
+
+## Local Event Operations
+
+### `increment()`
+
+```ts
+increment(): VersionVectorState
+```
+
+Records a local event by incrementing only the local replica's counter.
+
+All other observed replica counters remain unchanged.
+
+Returns a defensive copy of the resulting complete version vector.
+
+### `get(replicaId)`
+
+```ts
+get(replicaId: ReplicaId): number
+```
+
+Returns the current counter for a replica.
+
+Returns `0` when the replica has no recorded events.
+
+### `has(replicaId)`
+
+```ts
+has(replicaId: ReplicaId): boolean
+```
+
+Returns `true` when the version vector has observed at least one event from the specified replica.
+
+### `replicas()`
+
+```ts
+replicas(): ReplicaId[]
+```
+
+Returns all replica IDs currently represented in the vector.
+
+### `size()`
+
+```ts
+size(): number
+```
+
+Returns the number of replica components represented in the vector.
+
+## State Synchronization
+
+### `merge(state)`
+
+```ts
+merge(state: VersionVectorState): void
+```
+
+Merges a complete remote version vector using component-wise maximum.
+
+Validates that the supplied state is an object and is not an array.
+
+Repeated application of the same state has no additional effect.
+
+### `mergeDelta(delta)`
+
+```ts
+mergeDelta(
+    delta: VersionVectorDelta | Array<VersionVectorDelta>
+): void
+```
+
+Merges one or multiple compact deltas.
+
+Each delta is applied through `merge()`.
+
+Supports duplicate and out-of-order delivery.
+
+### `getDelta(since?)`
+
+```ts
+getDelta(since?: VersionVectorState): VersionVectorDelta
+```
+
+Returns only components newer than the supplied previous state.
+
+When `since` is omitted, all currently represented components are returned.
+
+### `getState()`
+
+```ts
+getState(): VersionVectorState
+```
+
+Returns a defensive copy of the complete version vector.
+
+### `compare(other)`
+
+```ts
+compare(other: VersionVectorState): CausalRelation
+```
+
+Compares the local version vector against another vector without modifying either.
+
+### `dominates(other)`
+
+```ts
+dominates(other: VersionVectorState): boolean
+```
+
+Checks whether the local vector contains every update represented by `other`.
+
+### `observed(replicaId, counter)`
+
+```ts
+observed(replicaId: ReplicaId, counter: number): boolean
+```
+
+Checks whether the local vector has observed the specified replica event.
+
+Returns `true` when:
+
+\[
+V[\text{replicaId}] \geq \text{counter}
+\]
+
+Validates the replica ID and counter.
+
+### `compact()`
+
+```ts
+compact(): number
+```
+
+Removes replica entries whose counters are zero.
+
+Returns the number of removed entries.
+
+Nonzero causal-history entries are never removed.
+
+## Usage
+
+### Creating Replicas
+
+```ts
+const alice = new VersionVectorCRDT({
+    replicaId: 'alice',
+});
+
+const bob = new VersionVectorCRDT({
+    replicaId: 'bob',
+});
+```
+
+### Recording Local Events
+
+```ts
+const aliceState = alice.increment();
+
+// {
+//     alice: 1
+// }
+```
+
+### Recording Events After Synchronization
+
+```ts
+bob.merge(alice.getState());
+
+const bobState = bob.increment();
+
+// {
+//     alice: 1,
+//     bob: 1
+// }
+```
+
+### Full-State Synchronization
+
+```ts
+const state = alice.getState();
+
+bob.merge(state);
+```
+
+### Delta Synchronization
+
+```ts
+const previous = alice.getState();
+
+// Record subsequent events.
+alice.increment();
+alice.increment();
+
+const delta = alice.getDelta(previous);
+
+bob.mergeDelta(delta);
+```
+
+### Multiple Delta Delivery
+
+```ts
+bob.mergeDelta([
+    delta1,
+    delta2,
+    delta3,
+]);
+```
+
+### Causal Comparison
+
+```ts
+const relation = alice.compare(bob.getState());
+
+switch (relation) {
+    case 'equal':
+        // Identical causal histories.
+        break;
+
+    case 'before':
+        // Alice's history precedes Bob's.
+        break;
+
+    case 'after':
+        // Alice's history dominates Bob's.
+        break;
+
+    case 'concurrent':
+        // Neither history dominates the other.
+        break;
+}
+```
+
+### Checking Observed Events
+
+```ts
+const observed = alice.observed('bob', 3);
+
+const dominates = alice.dominates(bob.getState());
+```
+
+### Compacting Zero Entries
+
+```ts
+const removed = alice.compact();
+```
+
+## CRDT Invariants
+
+| Property | Behavior |
+|---|---|
+| Local ownership | Each replica increments only its own counter. |
+| Monotonicity | Counters never decrease through normal operations. |
+| Merge | Component-wise maximum. |
+| Commutativity | Merge order does not affect the result. |
+| Associativity | Grouping merges does not affect the result. |
+| Idempotency | Repeated merges produce no additional changes. |
+| Causal ordering | Detects before, after, equal, and concurrent histories. |
+| Delta synchronization | Only newer components need to be transmitted. |
+| Defensive state | `getState()` returns a copy rather than exposing internal counters. |
+| Compaction | Removes only zero-valued components. |
+
+Version vectors provide the causal foundation for determining whether distributed events are ordered or concurrent, without relying on physical clocks.
+
+</details>
+
+<details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[VERSION_VECTOR_BIANRY]</span> </strong></summary>
 
 A high-performance binary Version Vector backed by a contiguous `ArrayBuffer` slab. Maintains node ID hashes in ascending order and stores each node's sequence counter as a `BigUint64`.
 
@@ -7890,10 +9679,194 @@ HTTP status failures include the response object. Network and timeout failures u
 </details>
 
 ## LOGIC GATES
+ <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[GATE_SMASHER]</span> </strong></summary>
 
+# `GATESMASHER`
 
+`GateSmasher` asynchronously evaluates a value against a dynamically supplied collection of gates. Each gate has a matching function and an execution function. The evaluator supports single-pass execution, first-match selection, and repeated evaluation.
+
+## Types
+
+### `GateResult<TValue, TResult>`
+
+Represents the outcome of evaluating one gate.
+
+| Property | Type | Description |
+|---|---|---|
+| `key` | `string` | Gate identifier from the gate map |
+| `matched` | `boolean` | Whether the gate matched successfully |
+| `result` | `TResult \| undefined` | Execution result when matched |
+| `error` | `unknown` | Error thrown during matching or execution |
+
+### `Gate<TValue, TResult>`
+
+Defines an individual gate.
+
+```ts
+type Gate<TValue, TResult> = {
+  match: (value: TValue) => boolean | Promise<boolean>;
+  execute: (value: TValue) => TResult | Promise<TResult>;
+};
+```
+
+- `match` determines whether the supplied value qualifies.
+- `execute` runs when `match` returns `true`.
+- Both functions support synchronous and asynchronous implementations.
+
+### `GateMap<TValue, TResult>`
+
+A string-keyed collection of gates.
+
+```ts
+type GateMap<TValue, TResult> = Record<string, Gate<TValue, TResult>>;
+```
+
+### `GateSmasherMode`
+
+```ts
+type GateSmasherMode = "all" | "first" | "repeat-all";
+```
+
+| Mode | Behavior |
+|---|---|
+| `all` | Evaluates every gate once and returns all results |
+| `first` | Evaluates gates in order and returns the first successful match |
+| `repeat-all` | Re-evaluates the complete gate collection until `stopWhen` returns `true` or `maxRuns` is reached |
+
+### `GateSmasherOptions`
+
+```ts
+type GateSmasherOptions = {
+  mode?: GateSmasherMode;
+  maxRuns?: number;
+  stopWhen?: (
+    results: GateResult<unknown, unknown>[],
+    run: number
+  ) => boolean;
+};
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `mode` | `"all"` | Evaluation strategy |
+| `maxRuns` | `Infinity` | Maximum number of evaluation passes; relevant to `repeat-all` and `first` |
+| `stopWhen` | `() => false` | Determines whether repeated evaluation should stop |
+
+`maxRuns` must be at least `1`; otherwise, `GateSmasher` throws an error.
+
+## `GateSmasher`
+
+```ts
+async function GateSmasher<
+  TValue,
+  TResult = unknown,
+  TGateMap extends GateMap<TValue, TResult> = GateMap<TValue, TResult>
+>(
+  valueToEvalOn: TValue,
+  getGates: () => TGateMap,
+  options: GateSmasherOptions = {}
+): Promise<GateResult<TValue, TResult>[]>
+```
+
+| Parameter | Description |
+|---|---|
+| `valueToEvalOn` | Value passed to every gate's `match` and `execute` functions |
+| `getGates` | Function returning the gate collection for each evaluation pass |
+| `options` | Optional evaluation mode and stopping configuration |
+
+Returns a promise containing the collected gate results.
+
+### Evaluation behavior
+
+**`all`**
+
+- Calls `getGates()` once.
+- Evaluates every gate in object-entry order.
+- Executes matching gates.
+- Returns the result of every gate, including non-matches and errors.
+
+**`first`**
+
+- Calls `getGates()` for each pass.
+- Evaluates gates in object-entry order.
+- Returns immediately when a gate successfully matches and executes.
+- The returned array contains only the first matching result.
+- If no gate matches, another pass is performed until `maxRuns` is reached.
+
+**`repeat-all`**
+
+- Calls `getGates()` on every pass, allowing the gate collection to change between runs.
+- Evaluates every gate on each pass.
+- Appends each pass's results to the accumulated result array.
+- Calls `stopWhen(allResults, run)` after each complete pass.
+- Stops when the callback returns `true` or `maxRuns` is reached.
+
+### Error handling
+
+Each gate is evaluated inside its own `try/catch`.
+
+- A non-matching gate produces `{ key, matched: false }`.
+- A matching gate produces `{ key, matched: true, result }`.
+- An error from either `match` or `execute` produces `{ key, matched: false, error }`.
+- An individual gate error does not prevent subsequent gates from being evaluated.
+
+## Usage
+
+### Basic evaluation
+
+```ts
+const results = await GateSmasher(
+  value,
+  () => ({
+    isNumber: {
+      match: (v) => typeof v === "number",
+      execute: (v) => v * 2,
+    },
+    isPositive: {
+      match: (v) => typeof v === "number" && v > 0,
+      execute: (v) => "positive",
+    },
+  })
+);
+```
+
+### First successful match
+
+```ts
+const result = await GateSmasher(value, getGates, {
+  mode: "first",
+});
+```
+
+### Repeated evaluation
+
+```ts
+const results = await GateSmasher(value, getGates, {
+  mode: "repeat-all",
+  maxRuns: 10,
+  stopWhen: (results, run) =>
+    results.some((entry) => entry.matched),
+});
+```
+
+## Exports
+
+```ts
+export { GateSmasher };
+
+export type {
+  Gate,
+  GateMap,
+  GateResult,
+  GateSmasherMode,
+  GateSmasherOptions,
+};
+```
+
+</details>
  
  <details style="font-size: 14.5px;"><summary><strong><span style="font-size: 16px; font-family: monospace">[PLINKO]</span> </strong></summary>
+
 # `PlinkoSession`
 
 Stateful evaluator for traversing a `PlinkoTree`. Maintains the active branch tier, current traversal path, session state, and shared metadata while evaluating payloads against node matchers and executing matched nodes.
