@@ -14,7 +14,7 @@ export declare class LS {
     private _withLock;
     get(key: string): any;
     getMany(keys: string[]): Promise<Record<string, any>>;
-    set(key: string, value: string | object): Promise<{} | undefined>;
+    set(key: string, value: string | object): Promise<{}>;
     update(key: string, value: string | object): Promise<void>;
     setMany(entries: Record<string, any>): Promise<void>;
     delete(key: string): Promise<void>;

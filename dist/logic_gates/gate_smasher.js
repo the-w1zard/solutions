@@ -1,5 +1,18 @@
-async function GateSmasher(valueToEvalOn, getGates, options = {}) {
-    const { mode = "all", maxRuns = Infinity, stopWhen = () => false, } = options;
+/**
+ const results = GateSmasher(  { role: "admin" }, () => ({
+    condition: {
+      match: (e) => e.role === "admin",
+      execute: () => "is admin",
+    },
+    condition_2: {
+      match: (e) => e.role === "admin",
+      execute: () => "is admin",
+    },
+  })
+);
+ */
+export async function AsyncGateSmasher(valueToEvalOn, getGates, options = {}) {
+    const { mode = "all", maxRuns = 1, stopWhen = () => false, } = options;
     if (maxRuns < 1) {
         throw new Error("GateSmasher: maxRuns must be at least 1.");
     }
@@ -43,4 +56,3 @@ async function GateSmasher(valueToEvalOn, getGates, options = {}) {
     }
     return allResults;
 }
-export { GateSmasher };

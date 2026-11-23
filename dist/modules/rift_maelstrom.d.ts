@@ -8,7 +8,7 @@ declare class REACTIVE_STORE {
     clear(): void;
     get size(): N;
 }
-export declare const STORE: REACTIVE_STORE;
+export declare const RX_STORE: REACTIVE_STORE;
 declare class MAELSTROM {
     root: A;
     private rifts;

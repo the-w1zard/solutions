@@ -1,3 +1,17 @@
+/**
+ const results = GateSmasher(  { role: "admin" }, () => ({
+    condition: {
+      match: (e) => e.role === "admin",
+      execute: () => "is admin",
+    },
+    condition_2: {
+      match: (e) => e.role === "admin",
+      execute: () => "is admin",
+    },
+  })
+);
+ */
+
 type GateResult<TValue, TResult> = {
     key: string;
     matched: boolean;
@@ -23,7 +37,7 @@ type GateResult<TValue, TResult> = {
     ) => boolean;
   };
   
-  async function GateSmasher<
+  export async function AsyncGateSmasher<
     TValue,
     TResult = unknown,
     TGateMap extends GateMap<TValue, TResult> = GateMap<TValue, TResult>
@@ -34,7 +48,7 @@ type GateResult<TValue, TResult> = {
   ): Promise<GateResult<TValue, TResult>[]> {
     const {
       mode = "all",
-      maxRuns = Infinity,
+      maxRuns = 1,
       stopWhen = () => false,
     } = options;
   
@@ -90,11 +104,3 @@ type GateResult<TValue, TResult> = {
     return allResults;
   }
   
-  export { GateSmasher };
-  export type {
-    Gate,
-    GateMap,
-    GateResult,
-    GateSmasherMode,
-    GateSmasherOptions,
-  };

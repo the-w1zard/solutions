@@ -1,7 +1,7 @@
-export declare class BYTE_ID {
+declare class BYTE_ID {
     MAX_PENDING: number;
-    sentTimestamps: Float64Array<ArrayBuffer>;
-    pendingResolvers: any[];
+    sentTimestamps: any;
+    pendingResolvers: any;
     cursor: number;
     private readonly counter;
     private epoch;
@@ -10,15 +10,15 @@ export declare class BYTE_ID {
     constructor();
 }
 export declare const _bid: BYTE_ID;
-export declare const ROOT_REG = "__ROOT_REG__";
-export declare const MASTER_REG = "__MASTER_REG__";
-export declare const SLAVE_REG = "__SLAVE_REG__";
+export declare const ROOT_STATE_REG = "__ROOT_STATE_REG__";
+export declare const MASTER_STATE_REG = "__MASTER_STATE_REG__";
+export declare const SLAVE_STATE_REG = "__SLAVE_STATE_REG__";
 interface ScopeOptions {
     sl_reg?: any;
     ms_reg?: any;
     globalKey?: any;
 }
-export declare function getNestedStoreMap<K, V>(sl_reg?: any, ms_reg?: any, globalKey?: any): Map<K, V>;
+export declare function getStateStoreMap<K, V>(sl_reg?: any, ms_reg?: any, globalKey?: any): Map<K, V>;
 export declare const store: {
     get<T>(key: any, opts?: ScopeOptions): T | undefined;
     set<T>(key: any, value: T | ((prev: T | undefined) => T), opts?: {
@@ -49,7 +49,7 @@ export interface SauronState {
     batch(key: string | symbol, fn: () => void, opts?: ScopeOptions): void;
     clear(opts?: ScopeOptions): void;
 }
-export declare function getScopedStateMetadata(sl_reg?: any, ms_reg?: any, globalKey?: any): any;
+export declare function getContextStateMetadata(sl_reg?: any, ms_reg?: any, globalKey?: any): any;
 export declare const state: SauronState;
 export default state;
 export declare function publish(key: string | symbol, value: any, opts?: ScopeOptions): void;
@@ -57,6 +57,6 @@ export declare function subscribe<T = any>(key: string | symbol, listener: (valu
 export declare function getAll<T = any>(opts?: ScopeOptions): Record<string | symbol, T>;
 export declare function set<T>(label: string, value: T, triggerRender?: boolean, sl_reg?: any, ms_reg?: any, globalKey?: any): void;
 export declare function get<T>(label: string, sl_reg?: any, ms_reg?: any, globalKey?: any): T | undefined;
-export declare function sub<T>(label: string, fn: (value: T) => void, sl_reg?: any, ms_reg?: any, globalKey?: any): () => void;
+export declare function subcribe<T>(label: string, fn: (value: T) => void, sl_reg?: any, ms_reg?: any, globalKey?: any): () => void;
 export declare function del(label: string, sl_reg?: any, ms_reg?: any, globalKey?: any): boolean;
 export declare function subAll(fn: (key: string | symbol, value: any) => void, sl_reg?: any, ms_reg?: any, globalKey?: any): () => void;

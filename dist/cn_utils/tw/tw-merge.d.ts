@@ -1,1 +1,1 @@
-export declare const twMerge: any;
+export declare const twMerge: (...classLists: import("./tw-join").ClassNameValue[]) => string;

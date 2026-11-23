@@ -1,7 +1,7 @@
 export declare class BYTE_ID {
     MAX_PENDING: number;
-    sentTimestamps: Float64Array<ArrayBuffer>;
-    pendingResolvers: any[];
+    sentTimestamps: any;
+    pendingResolvers: any;
     cursor: number;
     private readonly counter;
     private epoch;
@@ -9,13 +9,28 @@ export declare class BYTE_ID {
     _sid(): string;
     constructor();
 }
+export declare function useCell<T = A>(v: A, k?: A, s?: S, m?: S, r?: S): readonly [T, (next: any) => any];
+export declare function cell<T = any>(v: A, k?: A, s?: S, m?: S, r?: S): T;
+export declare const refStore: Map<string, {
+    current: any;
+}>;
+export declare function atom<T = any>(v: A, k?: A, s?: S, m?: S, r?: S): {
+    value: T;
+    peek(): T;
+    current: T;
+    crt: T;
+    set: T;
+};
+export declare function Maybe_Chain<T = A>(v: A): any;
+export declare function Maybe_ReChain<T = A>(v: A): any;
+export declare function MCR_Combo<T = A>(v: A, chain?: CHAIN): any;
 export declare class Chain<T = any> {
     initial_value: T;
     id: string;
     constructor(value?: T, id?: string);
     private _use;
     when(p: boolean | ((v: T) => boolean)): {
-        then: (fn: (v: T) => T | Promise<T>) => T | Promise<T> | undefined;
+        then: (fn: (v: T) => T | Promise<T>) => T | Promise<T>;
         otherwise: (fn: (v: T) => T | Promise<T>) => any;
     };
     if(p: boolean | ((v: T) => boolean)): T;

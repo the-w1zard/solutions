@@ -17,7 +17,7 @@ export declare class SESSION {
     private _withLock;
     get(key: string): any;
     getMany(keys: string[]): Promise<Record<string, any>>;
-    set(key: string, value: string | object): Promise<{} | undefined>;
+    set(key: string, value: string | object): Promise<{}>;
     update(key: string, value: string | object): Promise<void>;
     setMany(entries: Record<string, any>): Promise<void>;
     delete(key: string): Promise<void>;
@@ -30,23 +30,6 @@ export declare class SESSION {
     waitFor<T>(key: string, timeoutMs?: number): Promise<T>;
 }
 export declare const session: SESSION;
-interface SauronState {
-    get<T>(key: string | symbol, opts?: ScopeOptions): T | undefined;
-    set<T>(key: string | symbol, value: T | ((prev: T | undefined) => T), opts?: {
-        triggerRender?: boolean;
-    } & ScopeOptions): void;
-    delete(key: string | symbol, opts?: ScopeOptions): boolean;
-    getByPrefix<T>(prefix: string, opts?: ScopeOptions): {
-        key: string;
-        value: T;
-    }[];
-    getAll<T = any>(opts?: ScopeOptions): Record<string | symbol, T>;
-    subscribe<T>(key: string | symbol, listener: (value: T) => void, opts?: ScopeOptions): () => void;
-    subscribeAll(listener: (key: string | symbol, value: any) => void, opts?: ScopeOptions): () => void;
-    clear(opts?: ScopeOptions): void;
-    waitFor<T = any>(key: string | symbol, opts: ScopeOptions): Promise<T>;
-    batch?(key: any, fn: () => void): void;
-}
 export declare function getNestedStoreMap<K, V>(sl_reg?: any, ms_reg?: any, globalKey?: any): Map<K, V>;
 export declare const session_store: {
     get<T>(key: any, opts?: ScopeOptions): T | undefined;
@@ -112,10 +95,6 @@ export interface SStorageState {
     batch(key: string, fn: () => void, opts?: ScopeOptions): void;
     clear(opts?: ScopeOptions): void;
 }
-export interface SauronRegistry extends SauronState {
-    name: string;
-    destroy(): void;
-}
 export interface SauronContext<T> {
     id: string;
     DefaultValue?: T;
@@ -132,4 +111,3 @@ export declare function getSSC<T>(label: string, sl_reg?: any, ms_reg?: any, glo
 export declare function subSSC<T>(label: string, fn: (value: T) => void, sl_reg?: any, ms_reg?: any, globalKey?: any): () => void;
 export declare function deleteSSC(label: string, sl_reg?: any, ms_reg?: any, globalKey?: any): boolean;
 export declare function subAllSSC(fn: (key: string | symbol, value: any) => void, sl_reg?: any, ms_reg?: any, globalKey?: any): () => void;
-export {};

@@ -52,7 +52,7 @@ export declare class METRICS_PORNSTAR {
             circuitBreaker: N;
             rateLimit: N;
         };
-    } | null;
+    };
     getStreamData(): {
         adapters: {
             id: S;
@@ -188,7 +188,7 @@ export declare class METRICS_PORNSTAR {
             circuitBreaker: N;
             rateLimit: N;
         };
-    } | null;
+    };
     reset(): void;
     private getOrCreateTrace;
     traceStage(id: string, rt: string, stage: StageName, detail?: Record<string, unknown>, ms?: string): void;

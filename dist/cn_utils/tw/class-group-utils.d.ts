@@ -9,7 +9,7 @@ interface ClassValidatorObject {
     validator: ClassValidator;
 }
 export declare const createClassGroupUtils: (config: AnyConfig) => {
-    getClassGroupId: (className: string) => any;
+    getClassGroupId: (className: string) => string;
     getConflictingClassGroupIds: (classGroupId: AnyClassGroupIds, hasPostfixModifier: boolean) => readonly AnyClassGroupIds[];
 };
 /**

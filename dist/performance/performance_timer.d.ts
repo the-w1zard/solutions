@@ -26,7 +26,7 @@ export declare class PERFORMANCE_TIMER {
     private children;
     private recordHandlers;
     private gates;
-    constructor(staff?: any | undefined);
+    constructor(staff?: any);
     private currentScopeId;
     start(label: string, opts?: {
         scopeId?: string;
@@ -64,7 +64,7 @@ export declare class PERFORMANCE_TIMER {
             sinceStart: number;
             sinceLast: number;
         }[];
-    } | undefined;
+    };
     getChildren(parentId: string): TimingRecord[];
     getReport(label?: string): {
         count: number;
@@ -82,7 +82,7 @@ export declare class PERFORMANCE_TIMER {
         p50Formatted: string;
         p90Formatted: string;
         p99Formatted: string;
-    } | null;
+    };
     /** Trace Event Format — openable directly in chrome://tracing, Perfetto, speedscope. */
     exportTrace(label?: string): string;
     onRecord(handler: (timing: TimingRecord) => void): () => void;

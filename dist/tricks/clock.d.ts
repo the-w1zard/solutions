@@ -1,64 +1,4 @@
-type SCHEDULER_FN = {
-    (s: Scheduler): Scheduler;
-    immediate: Scheduler;
-    userBlocking: Scheduler;
-    normal: Scheduler;
-    background: Scheduler;
-    idle: Scheduler;
-    macrotask: Scheduler;
-    microtask: Scheduler;
-    schedule: typeof schedule;
-    scheduleChunked: typeof scheduleChunked;
-    yieldToScheduler: typeof yieldToScheduler;
-    withRequestScope: typeof withRequestScope;
-    Priority: {
-        order: typeof PRIORITY_ORDER;
-    };
-};
-interface Clock {
-    now(): N;
-    schedule(fn: () => V, delay: N, signal?: AbortSignal): Task;
-    dispose(): V;
-}
-export interface Task {
-    cancel(): V;
-    reprioritize(next: Priority): V;
-}
-export interface ScheduledTask {
-    priority: Priority;
-    scope: SY | S;
-    fn: () => N;
-    signal?: AbortSignal;
-    cancelled: B;
-}
-export type Priority = "immediate" | "user-blocking" | "normal" | "background" | "idle";
-export type BatchScope = SY;
-export type FlushCallback = () => V;
-export declare const PRIORITY_ORDER: Priority[];
-export declare const GLOBAL_SCOPE: unique symbol;
-export declare function enqueue(task: ScheduledTask): V;
-export declare function scheduleLoop(): V;
-export declare function pickNext(): ScheduledTask | UD;
-export declare function schedule(fn: () => V, opts?: {
-    priority?: Priority;
-    scope?: S;
-    signal?: AbortSignal;
-}): Task;
-export declare function withRequestScope<T>(requestId: S, fn: () => T): T;
-export declare function yieldToScheduler(): P<V>;
-export declare function scheduleChunked(work: Iterable<() => V> | Iterator<() => V>, opts?: {
-    priority?: Priority;
-    scope?: S;
-    chunkBudgetMs?: N;
-}): Task;
-export declare function microtask(fn: FlushCallback): void;
-export declare function batch<T>(fn: () => T): T;
-export declare function openBatch(): BatchScope;
-export declare function closeBatch(scope: BatchScope): V;
-export declare function isBatching(): B;
-export declare function onFlush(cb: FlushCallback): V;
-export declare function flushSync(): void;
-export declare function flush<T>(fn?: () => T): T | V;
+import { PRIORITY_ORDER, schedule, scheduleChunked, withRequestScope, yieldToScheduler } from "../performance/scheduler";
 export declare class CLOCK {
     private _activeClock;
     private _virtualClock;
@@ -83,7 +23,7 @@ export declare class CLOCK {
         };
         macrotask: {
             now: () => number;
-            schedule: (fn: () => V, delay?: number | undefined) => Task;
+            schedule: (fn: () => V, delay?: number) => Task;
         };
         animationFrame: Scheduler;
         bun: Scheduler;
@@ -123,5 +63,27 @@ export declare class SCHEDULER extends VIRTUAL_CLOCK {
     runAll(): P<V>;
     private _drainReal;
     private _hasPending;
+}
+type SCHEDULER_FN = {
+    (s: Scheduler): Scheduler;
+    immediate: Scheduler;
+    userBlocking: Scheduler;
+    normal: Scheduler;
+    background: Scheduler;
+    idle: Scheduler;
+    macrotask: Scheduler;
+    microtask: Scheduler;
+    schedule: typeof schedule;
+    scheduleChunked: typeof scheduleChunked;
+    yieldToScheduler: typeof yieldToScheduler;
+    withRequestScope: typeof withRequestScope;
+    Priority: {
+        order: typeof PRIORITY_ORDER;
+    };
+};
+interface Clock {
+    now(): N;
+    schedule(fn: () => V, delay: N, signal?: AbortSignal): Task;
+    dispose(): V;
 }
 export {};
