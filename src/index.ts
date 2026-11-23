@@ -57,6 +57,7 @@ export * from './modules/waiter'
 
 export * from './logic_gates/plinko'
 export * from './logic_gates/switchboard'
+export * from './logic_gates/gate_smasher'
 export * from './http/http_client'
 export * from './enc/DISRUPTOR_CRYPTO'
 export * from './db/cache'
